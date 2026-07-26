@@ -3,6 +3,7 @@ import { Club, Submission } from './types';
 import { loadClubsConfig, loadSubmissions } from './services/storage';
 import { StudentForm } from './components/StudentForm';
 import { TeacherTools } from './components/TeacherTools';
+import { TeacherLoginModal } from './components/TeacherLoginModal';
 import { GraduationCap, ShieldCheck, UserCheck, Sparkles, RefreshCw } from 'lucide-react';
 
 export default function App() {
@@ -10,6 +11,28 @@ export default function App() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState<'STUDENT' | 'TEACHER'>('STUDENT');
+
+  // Teacher Auth State
+  const [isTeacherAuthenticated, setIsTeacherAuthenticated] = useState<boolean>(() => {
+    return typeof sessionStorage !== 'undefined' && sessionStorage.getItem('teacher-auth') === 'true';
+  });
+
+  // Handle Teacher View Click
+  const handleTeacherViewClick = () => {
+    setActiveView('TEACHER');
+  };
+
+  const handleTeacherLoginSuccess = () => {
+    setIsTeacherAuthenticated(true);
+    sessionStorage.setItem('teacher-auth', 'true');
+    setActiveView('TEACHER');
+  };
+
+  const handleTeacherLogout = () => {
+    setIsTeacherAuthenticated(false);
+    sessionStorage.removeItem('teacher-auth');
+    setActiveView('STUDENT');
+  };
 
   // Load initial data
   const refreshData = async () => {
@@ -96,7 +119,7 @@ export default function App() {
             </button>
             <button
               type="button"
-              onClick={() => setActiveView('TEACHER')}
+              onClick={handleTeacherViewClick}
               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 activeView === 'TEACHER'
                   ? 'bg-slate-900 text-white shadow-xs'
@@ -121,12 +144,18 @@ export default function App() {
             submissions={submissions}
             onSubmissionsUpdated={updated => setSubmissions(updated)}
           />
+        ) : !isTeacherAuthenticated ? (
+          <TeacherLoginModal
+            onLoginSuccess={handleTeacherLoginSuccess}
+            onCancel={() => setActiveView('STUDENT')}
+          />
         ) : (
           <TeacherTools
             clubs={clubs}
             submissions={submissions}
             onClubsUpdated={updated => setClubs(updated)}
             onSubmissionsUpdated={updated => setSubmissions(updated)}
+            onLogout={handleTeacherLogout}
           />
         )}
 
@@ -134,7 +163,13 @@ export default function App() {
         <footer className="mt-12 pt-6 border-t border-stone-200 text-center">
           <button
             type="button"
-            onClick={() => setActiveView(activeView === 'STUDENT' ? 'TEACHER' : 'STUDENT')}
+            onClick={() => {
+              if (activeView === 'TEACHER') {
+                setActiveView('STUDENT');
+              } else {
+                handleTeacherViewClick();
+              }
+            }}
             className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 underline font-medium cursor-pointer transition-colors"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-500" />

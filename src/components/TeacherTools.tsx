@@ -15,7 +15,9 @@ import {
   Building,
   BarChart3,
   X,
-  FileSpreadsheet
+  FileSpreadsheet,
+  LogOut,
+  UserCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -24,13 +26,15 @@ interface TeacherToolsProps {
   submissions: Submission[];
   onClubsUpdated: (clubs: Club[]) => void;
   onSubmissionsUpdated: (submissions: Submission[]) => void;
+  onLogout?: () => void;
 }
 
 export const TeacherTools: React.FC<TeacherToolsProps> = ({
   clubs,
   submissions,
   onClubsUpdated,
-  onSubmissionsUpdated
+  onSubmissionsUpdated,
+  onLogout
 }) => {
   const [editedClubs, setEditedClubs] = useState<Club[]>(JSON.parse(JSON.stringify(clubs)));
   const [isSavingClubs, setIsSavingClubs] = useState(false);
@@ -159,9 +163,15 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
       <div className="bg-slate-900 text-white rounded-2xl p-6 md:p-8 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 text-amber-400 text-xs font-semibold uppercase tracking-wider mb-2">
-              <Settings className="w-3.5 h-3.5" />
-              Teacher Control Panel
+            <div className="flex items-center gap-2 mb-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 text-amber-400 text-xs font-semibold uppercase tracking-wider">
+                <Settings className="w-3.5 h-3.5" />
+                Teacher Control Panel
+              </div>
+              <span className="text-xs text-slate-400 bg-slate-800/80 border border-slate-700/60 px-2.5 py-1 rounded-full flex items-center gap-1 font-medium">
+                <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+                pgaayathri96@gmail.com
+              </span>
             </div>
             <h2 className="text-2xl font-bold">Manage Clubs & Responses</h2>
             <p className="text-slate-400 text-sm mt-1">
@@ -189,6 +199,18 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
               <Download className="w-3.5 h-3.5" />
               CSV
             </button>
+
+            {onLogout && (
+              <button
+                type="button"
+                onClick={onLogout}
+                className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-rose-950/70 hover:bg-rose-900 border border-rose-800/80 text-rose-200 text-xs font-semibold transition-colors cursor-pointer"
+                title="Log out from Teacher Tools"
+              >
+                <LogOut className="w-3.5 h-3.5 text-rose-400" />
+                Log Out
+              </button>
+            )}
           </div>
         </div>
 
