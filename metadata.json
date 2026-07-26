@@ -1,0 +1,6 @@
+{
+  "name": "Cocurricular Club Sign-Up",
+  "description": "Student sign-up form for cocurricular clubs with real-time capacity tracking and teacher management tools.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
