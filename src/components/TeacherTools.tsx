@@ -113,8 +113,8 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
   };
 
   // Delete an individual submission
-  const handleDeleteSingleSubmission = async (submissionId: string, studentName: string) => {
-    if (!confirm(`Remove registration entry for "${studentName}"? This will free up 1 spot in their club.`)) {
+  const handleDeleteSingleSubmission = async (submissionId: string, studentFullName: string) => {
+    if (!confirm(`Remove registration entry for "${studentFullName}"? This will free up 1 spot in their club.`)) {
       return;
     }
     const ok = await deleteSubmission(submissionId);
@@ -125,7 +125,7 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
 
   // Restore default clubs
   const handleRestoreDefaults = async () => {
-    if (confirm('Restore default clubs list (Book Club, Futsal, Entrepreneurship, Coding)? This will overwrite your current club list.')) {
+    if (confirm('Restore the default clubs list? This will overwrite your current club list.')) {
       const ok = await saveClubsConfig(DEFAULT_CLUBS);
       if (ok) {
         onClubsUpdated(DEFAULT_CLUBS);
@@ -139,7 +139,8 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
   // Filter submissions
   const filteredSubmissions = submissions.filter(s => {
     const matchesSearch =
-      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.class.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.clubName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesClub = selectedClubFilter === 'ALL' || s.clubId === selectedClubFilter;
@@ -421,7 +422,8 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
               <thead className="bg-stone-100/80 text-brand-emerald-600 font-semibold uppercase tracking-wider border-b border-stone-200">
                 <tr>
                   <th className="p-3">#</th>
-                  <th className="p-3">Student Name</th>
+                  <th className="p-3">First Name</th>
+                  <th className="p-3">Last Name</th>
                   <th className="p-3">Class</th>
                   <th className="p-3">Club Selected</th>
                   <th className="p-3">Submitted At</th>
@@ -432,7 +434,8 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
                 {filteredSubmissions.map((sub, index) => (
                   <tr key={sub.id || index} className="hover:bg-stone-50/80 transition-colors">
                     <td className="p-3 font-mono text-brand-emerald-400">{index + 1}</td>
-                    <td className="p-3 font-bold text-brand-emerald-900">{sub.name}</td>
+                    <td className="p-3 font-bold text-brand-emerald-900">{sub.firstName}</td>
+                    <td className="p-3 font-bold text-brand-emerald-900">{sub.lastName}</td>
                     <td className="p-3 font-medium text-brand-emerald-700">{sub.class}</td>
                     <td className="p-3">
                       <span className="inline-block bg-brand-turmeric-50 text-brand-turmeric-700 border border-brand-turmeric-100 px-2.5 py-0.5 rounded-md font-semibold">
@@ -445,7 +448,7 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
                     <td className="p-3 text-right">
                       <button
                         type="button"
-                        onClick={() => handleDeleteSingleSubmission(sub.id, sub.name)}
+                        onClick={() => handleDeleteSingleSubmission(sub.id, `${sub.firstName} ${sub.lastName}`)}
                         title="Remove student submission"
                         className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
                       >

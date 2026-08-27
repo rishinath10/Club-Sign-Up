@@ -7,7 +7,8 @@ export interface Club {
 
 export interface Submission {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   class: string;
   clubId: string;
   clubName: string;

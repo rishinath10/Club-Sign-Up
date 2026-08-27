@@ -51,7 +51,7 @@ export async function saveClubsConfig(clubs: Club[]): Promise<boolean> {
 export async function loadSubmissions(): Promise<Submission[]> {
   const { data, error } = await supabase
     .from('submissions')
-    .select('id, name, class, club_id, club_name, ts')
+    .select('id, first_name, last_name, class, club_id, club_name, ts')
     .order('ts', { ascending: true });
 
   if (error) {
@@ -61,7 +61,8 @@ export async function loadSubmissions(): Promise<Submission[]> {
 
   return (data ?? []).map(row => ({
     id: row.id,
-    name: row.name,
+    firstName: row.first_name,
+    lastName: row.last_name,
     class: row.class,
     clubId: row.club_id,
     clubName: row.club_name,
@@ -88,31 +89,36 @@ export type SignupResult =
   | { ok: false; reason: 'duplicate' | 'full' | 'error'; message: string };
 
 export async function submitSignup(input: {
-  name: string;
+  firstName: string;
+  lastName: string;
   studentClass: string;
   clubId: string;
   clubName: string;
 }): Promise<SignupResult> {
+  const fullName = `${input.firstName} ${input.lastName}`;
+
   const { data: alreadyTaken, error: checkErr } = await supabase.rpc('check_name_taken', {
-    p_name: input.name
+    p_first_name: input.firstName,
+    p_last_name: input.lastName
   });
   if (!checkErr && alreadyTaken) {
     return {
       ok: false,
       reason: 'duplicate',
-      message: `A sign-up for "${input.name}" is already registered. Each student may only sign up once.`
+      message: `A sign-up for "${fullName}" is already registered. Each student may only sign up once.`
     };
   }
 
   const { data, error } = await supabase
     .from('submissions')
     .insert({
-      name: input.name,
+      first_name: input.firstName,
+      last_name: input.lastName,
       class: input.studentClass,
       club_id: input.clubId,
       club_name: input.clubName
     })
-    .select('id, name, class, club_id, club_name, ts')
+    .select('id, first_name, last_name, class, club_id, club_name, ts')
     .single();
 
   if (error) {
@@ -123,7 +129,7 @@ export async function submitSignup(input: {
       return {
         ok: false,
         reason: 'duplicate',
-        message: `A sign-up for "${input.name}" is already registered. Each student may only sign up once.`
+        message: `A sign-up for "${fullName}" is already registered. Each student may only sign up once.`
       };
     }
     console.error('submitSignup error:', error);
@@ -134,7 +140,8 @@ export async function submitSignup(input: {
     ok: true,
     submission: {
       id: data.id,
-      name: data.name,
+      firstName: data.first_name,
+      lastName: data.last_name,
       class: data.class,
       clubId: data.club_id,
       clubName: data.club_name,
@@ -167,7 +174,8 @@ export function exportSubmissionsToExcel(submissions: Submission[], clubs: Club[
   // Sheet 1: Student Sign-ups
   const studentRows = submissions.map((s, idx) => ({
     '#': idx + 1,
-    'Student Name': s.name,
+    'First Name': s.firstName,
+    'Last Name': s.lastName,
     'Class': s.class,
     'Club Selected': s.clubName,
     'Submitted At': s.ts ? new Date(s.ts).toLocaleString() : ''
@@ -176,13 +184,14 @@ export function exportSubmissionsToExcel(submissions: Submission[], clubs: Club[
   const studentWs = XLSX.utils.json_to_sheet(
     studentRows.length > 0
       ? studentRows
-      : [{ '#': '', 'Student Name': 'No submissions recorded', 'Class': '', 'Club Selected': '', 'Submitted At': '' }]
+      : [{ '#': '', 'First Name': 'No submissions recorded', 'Last Name': '', 'Class': '', 'Club Selected': '', 'Submitted At': '' }]
   );
 
   // Set column widths for readability
   studentWs['!cols'] = [
     { wch: 6 },
-    { wch: 25 },
+    { wch: 20 },
+    { wch: 20 },
     { wch: 15 },
     { wch: 25 },
     { wch: 22 }
@@ -230,12 +239,12 @@ export function exportSubmissionsToCsv(submissions: Submission[]): void {
     return s;
   };
 
-  const header = ['Student Name', 'Class', 'Club Selected', 'Submitted At'];
+  const header = ['First Name', 'Last Name', 'Class', 'Club Selected', 'Submitted At'];
   const lines = [header.join(',')];
 
   submissions.forEach(s => {
     const dateStr = s.ts ? new Date(s.ts).toLocaleString() : '';
-    lines.push([csvEscape(s.name), csvEscape(s.class), csvEscape(s.clubName), csvEscape(dateStr)].join(','));
+    lines.push([csvEscape(s.firstName), csvEscape(s.lastName), csvEscape(s.class), csvEscape(s.clubName), csvEscape(dateStr)].join(','));
   });
 
   const csv = lines.join('\n');

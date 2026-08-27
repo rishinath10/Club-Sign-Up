@@ -11,13 +11,15 @@ interface StudentFormProps {
 }
 
 export const StudentForm: React.FC<StudentFormProps> = ({ clubs, seatCounts, onSubmitted }) => {
-  const [studentName, setStudentName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [studentClass, setStudentClass] = useState('');
   const [selectedClubId, setSelectedClubId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [submittedData, setSubmittedData] = useState<{
-    name: string;
+    firstName: string;
+    lastName: string;
     class: string;
     clubName: string;
     ts: string;
@@ -30,11 +32,12 @@ export const StudentForm: React.FC<StudentFormProps> = ({ clubs, seatCounts, onS
     e.preventDefault();
     setErrorMessage('');
 
-    const trimmedName = studentName.trim();
+    const trimmedFirstName = firstName.trim();
+    const trimmedLastName = lastName.trim();
     const trimmedClass = studentClass.trim();
 
-    if (!trimmedName || !trimmedClass) {
-      setErrorMessage('Please enter both your full name and class.');
+    if (!trimmedFirstName || !trimmedLastName || !trimmedClass) {
+      setErrorMessage('Please enter your first name, last name, and class.');
       return;
     }
 
@@ -56,7 +59,8 @@ export const StudentForm: React.FC<StudentFormProps> = ({ clubs, seatCounts, onS
       // atomically, so this is race-condition safe even with many students
       // submitting from different devices at once.
       const result = await submitSignup({
-        name: trimmedName,
+        firstName: trimmedFirstName,
+        lastName: trimmedLastName,
         studentClass: trimmedClass,
         clubId: selectedClubId,
         clubName: club.name
@@ -72,7 +76,8 @@ export const StudentForm: React.FC<StudentFormProps> = ({ clubs, seatCounts, onS
       }
 
       setSubmittedData({
-        name: result.submission.name,
+        firstName: result.submission.firstName,
+        lastName: result.submission.lastName,
         class: result.submission.class,
         clubName: result.submission.clubName,
         ts: result.submission.ts
@@ -87,7 +92,8 @@ export const StudentForm: React.FC<StudentFormProps> = ({ clubs, seatCounts, onS
 
   const handleResetForm = () => {
     setSubmittedData(null);
-    setStudentName('');
+    setFirstName('');
+    setLastName('');
     setStudentClass('');
     setSelectedClubId(null);
     setErrorMessage('');
@@ -129,7 +135,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ clubs, seatCounts, onS
         >
           <div className="flex justify-between items-center py-1 border-b border-stone-200/60">
             <span className="text-brand-emerald-500 font-medium">Student Name</span>
-            <span className="font-semibold text-brand-emerald-900">{submittedData.name}</span>
+            <span className="font-semibold text-brand-emerald-900">{submittedData.firstName} {submittedData.lastName}</span>
           </div>
           <div className="flex justify-between items-center py-1 border-b border-stone-200/60">
             <span className="text-brand-emerald-500 font-medium">Class</span>
@@ -191,18 +197,33 @@ export const StudentForm: React.FC<StudentFormProps> = ({ clubs, seatCounts, onS
           )}
         </AnimatePresence>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-semibold text-brand-emerald-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <User className="w-3.5 h-3.5 text-brand-emerald-400" />
-              Student Full Name <span className="text-red-500">*</span>
+              First Name <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               required
-              value={studentName}
-              onChange={e => setStudentName(e.target.value)}
-              placeholder="e.g. Sarah Ahmad"
+              value={firstName}
+              onChange={e => setFirstName(e.target.value)}
+              placeholder="e.g. Sarah"
+              className="w-full px-4 py-2.5 rounded-xl border border-stone-300 focus:border-brand-emerald-800 focus:ring-2 focus:ring-brand-emerald-800/10 text-brand-emerald-900 placeholder:text-brand-emerald-400 text-sm transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-brand-emerald-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5 text-brand-emerald-400" />
+              Last Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={lastName}
+              onChange={e => setLastName(e.target.value)}
+              placeholder="e.g. Ahmad"
               className="w-full px-4 py-2.5 rounded-xl border border-stone-300 focus:border-brand-emerald-800 focus:ring-2 focus:ring-brand-emerald-800/10 text-brand-emerald-900 placeholder:text-brand-emerald-400 text-sm transition-all"
             />
           </div>
