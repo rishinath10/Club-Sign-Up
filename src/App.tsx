@@ -188,6 +188,9 @@ export default function App() {
           <p className="text-[11px] text-brand-emerald-400 mt-2">
             Shared persistent storage enabled &bull; Real-time seat updates
           </p>
+          <p className="text-[10px] text-brand-emerald-300 mt-1">
+            DB: {new URL(import.meta.env.VITE_SUPABASE_URL).hostname}
+          </p>
         </footer>
       </main>
     </div>
