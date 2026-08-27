@@ -14,6 +14,10 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState<'STUDENT' | 'TEACHER'>('STUDENT');
   const [isTeacherAuthenticated, setIsTeacherAuthenticated] = useState(false);
+  // Teacher entry points (nav pill + footer link) stay hidden from students by default.
+  // Visiting the site with ?teacher in the URL (or already being logged in) reveals them.
+  const [teacherAccessRevealed, setTeacherAccessRevealed] = useState(false);
+  const showTeacherAccess = teacherAccessRevealed || isTeacherAuthenticated;
 
   // Handle Teacher View Click
   const handleTeacherViewClick = () => {
@@ -42,6 +46,12 @@ export default function App() {
   const refreshTeacherData = useCallback(async () => {
     const loadedSubmissions = await loadSubmissions();
     setSubmissions(loadedSubmissions);
+  }, []);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).has('teacher')) {
+      setTeacherAccessRevealed(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -97,33 +107,35 @@ export default function App() {
             </p>
           </div>
 
-          {/* Mode Navigation Pills */}
-          <div className="flex items-center gap-1 bg-stone-200/80 p-1 rounded-xl shrink-0 self-start md:self-auto">
-            <button
-              type="button"
-              onClick={() => setActiveView('STUDENT')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeView === 'STUDENT'
-                  ? 'bg-white text-brand-emerald-900 shadow-xs'
-                  : 'text-brand-emerald-600 hover:text-brand-emerald-900'
-              }`}
-            >
-              <UserCheck className="w-3.5 h-3.5" />
-              Student View
-            </button>
-            <button
-              type="button"
-              onClick={handleTeacherViewClick}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeView === 'TEACHER'
-                  ? 'bg-brand-emerald-900 text-white shadow-xs'
-                  : 'text-brand-emerald-600 hover:text-brand-emerald-900'
-              }`}
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-brand-turmeric-400" />
-              Teacher Tools
-            </button>
-          </div>
+          {/* Mode Navigation Pills - hidden from students; only shown once teacher access is revealed */}
+          {showTeacherAccess && (
+            <div className="flex items-center gap-1 bg-stone-200/80 p-1 rounded-xl shrink-0 self-start md:self-auto">
+              <button
+                type="button"
+                onClick={() => setActiveView('STUDENT')}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeView === 'STUDENT'
+                    ? 'bg-white text-brand-emerald-900 shadow-xs'
+                    : 'text-brand-emerald-600 hover:text-brand-emerald-900'
+                }`}
+              >
+                <UserCheck className="w-3.5 h-3.5" />
+                Student View
+              </button>
+              <button
+                type="button"
+                onClick={handleTeacherViewClick}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeView === 'TEACHER'
+                    ? 'bg-brand-emerald-900 text-white shadow-xs'
+                    : 'text-brand-emerald-600 hover:text-brand-emerald-900'
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-brand-turmeric-400" />
+                Teacher Tools
+              </button>
+            </div>
+          )}
         </header>
 
         {/* Content Body */}
@@ -155,22 +167,24 @@ export default function App() {
           />
         )}
 
-        {/* Bottom Footer & Teacher Toggle Link */}
+        {/* Bottom Footer - the teacher toggle link only appears once teacher access is revealed */}
         <footer className="mt-12 pt-6 border-t border-stone-200 text-center">
-          <button
-            type="button"
-            onClick={() => {
-              if (activeView === 'TEACHER') {
-                setActiveView('STUDENT');
-              } else {
-                handleTeacherViewClick();
-              }
-            }}
-            className="inline-flex items-center gap-1.5 text-xs text-brand-emerald-500 hover:text-brand-emerald-900 underline font-medium cursor-pointer transition-colors"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-brand-turmeric-500" />
-            {activeView === 'STUDENT' ? 'Teacher tools & management' : 'Switch back to student form'}
-          </button>
+          {showTeacherAccess && (
+            <button
+              type="button"
+              onClick={() => {
+                if (activeView === 'TEACHER') {
+                  setActiveView('STUDENT');
+                } else {
+                  handleTeacherViewClick();
+                }
+              }}
+              className="inline-flex items-center gap-1.5 text-xs text-brand-emerald-500 hover:text-brand-emerald-900 underline font-medium cursor-pointer transition-colors"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-brand-turmeric-500" />
+              {activeView === 'STUDENT' ? 'Teacher tools & management' : 'Switch back to student form'}
+            </button>
+          )}
           <p className="text-[11px] text-brand-emerald-400 mt-2">
             Shared persistent storage enabled &bull; Real-time seat updates
           </p>

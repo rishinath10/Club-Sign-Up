@@ -15,8 +15,19 @@ export interface Submission {
 }
 
 export const DEFAULT_CLUBS: Club[] = [
-  { id: 'book-club', name: 'Book club', capacity: 30, description: 'Literature analysis, group discussions, and creative writing.' },
-  { id: 'futsal', name: 'Futsal', capacity: 22, description: 'Indoor soccer training, tactical skills, and friendly matches.' },
-  { id: 'entrepreneurship', name: 'Entrepreneurship', capacity: 25, description: 'Business basics, product development, and pitching ideas.' },
-  { id: 'coding', name: 'Coding', capacity: 25, description: 'Web development, programming logic, and building apps.' }
+  { id: 'arts-craft-club', name: 'Arts & Craft Club', capacity: 30 },
+  { id: 'chess-club', name: 'Chess Club', capacity: 30 },
+  { id: 'coding-club', name: 'Coding Club', capacity: 30 },
+  { id: 'culinary-club', name: 'Culinary Club', capacity: 30 },
+  { id: 'dance-club', name: 'Dance Club', capacity: 30 },
+  { id: 'entrepreneurship-club', name: 'Entrepreneurship Club', capacity: 30 },
+  { id: 'futsal-club', name: 'Futsal Club', capacity: 30 },
+  { id: 'literary-society', name: 'Literary Society', capacity: 30 },
+  { id: 'music-club', name: 'Music Club', capacity: 30 },
+  { id: 'public-speaking-club', name: 'Public Speaking Club', capacity: 30 },
+  { id: 'science-innovation-club', name: 'Science & Innovation Club', capacity: 30 },
+  { id: 'scrabble-club', name: 'Scrabble Club', capacity: 30 },
+  { id: 'table-tennis-club', name: 'Table Tennis Club', capacity: 30 },
+  { id: 'taekwondo', name: 'Taekwondo', capacity: 30 },
+  { id: 'theatre-performing-arts', name: 'Theatre & Performing Arts', capacity: 30 }
 ];
