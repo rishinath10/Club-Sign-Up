@@ -109,17 +109,17 @@ export async function submitSignup(input: {
     };
   }
 
-  const { data, error } = await supabase
-    .from('submissions')
-    .insert({
-      first_name: input.firstName,
-      last_name: input.lastName,
-      class: input.studentClass,
-      club_id: input.clubId,
-      club_name: input.clubName
-    })
-    .select('id, first_name, last_name, class, club_id, club_name, ts')
-    .single();
+  // Anonymous students have no SELECT permission on submissions (that's what
+  // keeps other students' names private), so a plain .insert().select() would
+  // fail to read the row back and roll the whole insert back. This RPC does
+  // the insert server-side and returns the row directly, sidestepping that.
+  const { data, error } = await supabase.rpc('submit_signup', {
+    p_first_name: input.firstName,
+    p_last_name: input.lastName,
+    p_class: input.studentClass,
+    p_club_id: input.clubId,
+    p_club_name: input.clubName
+  });
 
   if (error) {
     if (error.message.includes('CLUB_FULL')) {
@@ -136,16 +136,22 @@ export async function submitSignup(input: {
     return { ok: false, reason: 'error', message: 'Failed to save your submission. Please try again.' };
   }
 
+  const row = data?.[0];
+  if (!row) {
+    console.error('submitSignup error: RPC returned no row');
+    return { ok: false, reason: 'error', message: 'Failed to save your submission. Please try again.' };
+  }
+
   return {
     ok: true,
     submission: {
-      id: data.id,
-      firstName: data.first_name,
-      lastName: data.last_name,
-      class: data.class,
-      clubId: data.club_id,
-      clubName: data.club_name,
-      ts: data.ts
+      id: row.id,
+      firstName: row.first_name,
+      lastName: row.last_name,
+      class: row.class,
+      clubId: row.club_id,
+      clubName: row.club_name,
+      ts: row.ts
     }
   };
 }
