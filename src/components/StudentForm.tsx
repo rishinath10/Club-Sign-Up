@@ -1,20 +1,16 @@
 import React, { useState } from 'react';
-import { Club, Submission } from '../types';
-import { loadSubmissions, saveSubmissions } from '../services/storage';
+import { Club } from '../types';
+import { submitSignup } from '../services/storage';
 import { CheckCircle2, AlertCircle, Users, Sparkles, User, GraduationCap, ArrowRight, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface StudentFormProps {
   clubs: Club[];
-  submissions: Submission[];
-  onSubmissionsUpdated: (newSubmissions: Submission[]) => void;
+  seatCounts: Record<string, number>;
+  onSubmitted: () => void | Promise<void>;
 }
 
-export const StudentForm: React.FC<StudentFormProps> = ({
-  clubs,
-  submissions,
-  onSubmissionsUpdated
-}) => {
+export const StudentForm: React.FC<StudentFormProps> = ({ clubs, seatCounts, onSubmitted }) => {
   const [studentName, setStudentName] = useState('');
   const [studentClass, setStudentClass] = useState('');
   const [selectedClubId, setSelectedClubId] = useState<string | null>(null);
@@ -27,10 +23,8 @@ export const StudentForm: React.FC<StudentFormProps> = ({
     ts: string;
   } | null>(null);
 
-  // Calculate spots count for a club
-  const getClubCount = (clubId: string) => {
-    return submissions.filter(s => s.clubId === clubId).length;
-  };
+  // Live spots count for a club, from the shared server-side seat counts
+  const getClubCount = (clubId: string) => seatCounts[clubId] ?? 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,70 +43,39 @@ export const StudentForm: React.FC<StudentFormProps> = ({
       return;
     }
 
+    const club = clubs.find(c => c.id === selectedClubId);
+    if (!club) {
+      setErrorMessage('The selected club could not be found.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      // Re-fetch latest submissions from storage to prevent race condition & check for duplicate student sign-up
-      const latestSubmissions = await loadSubmissions();
-
-      // Check if this student (case-insensitive name match) has already submitted
-      const normalizedName = trimmedName.toLowerCase();
-      const existingSubmission = latestSubmissions.find(
-        s => s.name.trim().toLowerCase() === normalizedName
-      );
-
-      if (existingSubmission) {
-        onSubmissionsUpdated(latestSubmissions);
-        setErrorMessage(
-          `Duplicate Submission Blocked: A sign-up for "${existingSubmission.name}" (${existingSubmission.class}) is already registered for "${existingSubmission.clubName}". Each student may only sign up once.`
-        );
-        setIsSubmitting(false);
-        return;
-      }
-
-      const club = clubs.find(c => c.id === selectedClubId);
-
-      if (!club) {
-        setErrorMessage('The selected club could not be found.');
-        setIsSubmitting(false);
-        return;
-      }
-
-      const currentCount = latestSubmissions.filter(s => s.clubId === selectedClubId).length;
-
-      if (currentCount >= club.capacity) {
-        // Club is now full
-        onSubmissionsUpdated(latestSubmissions);
-        setErrorMessage(`"${club.name}" just reached maximum capacity (${club.capacity} students). Please choose another club.`);
-        setSelectedClubId(null);
-        setIsSubmitting(false);
-        return;
-      }
-
-      const newSubmission: Submission = {
-        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `sub-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      // The database enforces capacity limits and duplicate-name blocking
+      // atomically, so this is race-condition safe even with many students
+      // submitting from different devices at once.
+      const result = await submitSignup({
         name: trimmedName,
-        class: trimmedClass,
+        studentClass: trimmedClass,
         clubId: selectedClubId,
-        clubName: club.name,
-        ts: new Date().toISOString()
-      };
+        clubName: club.name
+      });
 
-      const updatedList = [...latestSubmissions, newSubmission];
-      const savedOk = await saveSubmissions(updatedList);
+      await onSubmitted();
 
-      if (!savedOk) {
-        setErrorMessage('Failed to save your submission. Please try again.');
+      if (result.ok === false) {
+        setErrorMessage(result.message);
+        if (result.reason === 'full') setSelectedClubId(null);
         setIsSubmitting(false);
         return;
       }
 
-      onSubmissionsUpdated(updatedList);
       setSubmittedData({
-        name: trimmedName,
-        class: trimmedClass,
-        clubName: club.name,
-        ts: newSubmission.ts
+        name: result.submission.name,
+        class: result.submission.class,
+        clubName: result.submission.clubName,
+        ts: result.submission.ts
       });
     } catch (err) {
       console.error('Error submitting form:', err);

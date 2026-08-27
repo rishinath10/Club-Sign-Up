@@ -1,81 +1,164 @@
 import { Club, Submission, DEFAULT_CLUBS } from '../types';
+import { supabase } from './supabaseClient';
 import * as XLSX from 'xlsx';
 
-const STORAGE_CONFIG_KEY = 'signup-config-v1';
-const STORAGE_SUBMISSIONS_KEY = 'signup-submissions-v1';
-
-// Abstraction for persistent storage supporting window.storage API if available or falling back to localStorage
-async function getValue(key: string): Promise<string | null> {
-  try {
-    if (typeof window !== 'undefined' && (window as any).storage?.get) {
-      const result = await (window as any).storage.get(key, true);
-      return result ? result.value : null;
-    }
-  } catch (err) {
-    console.warn('window.storage.get error, falling back to localStorage:', err);
-  }
-
-  try {
-    return localStorage.getItem(key);
-  } catch (e) {
-    console.error('localStorage.getItem error:', e);
-    return null;
-  }
-}
-
-async function setValue(key: string, value: string): Promise<boolean> {
-  let success = false;
-  try {
-    if (typeof window !== 'undefined' && (window as any).storage?.set) {
-      await (window as any).storage.set(key, value, true);
-      success = true;
-    }
-  } catch (err) {
-    console.warn('window.storage.set error, falling back to localStorage:', err);
-  }
-
-  try {
-    localStorage.setItem(key, value);
-    // Dispatch custom event for same-tab reactive updates
-    window.dispatchEvent(new CustomEvent('club-storage-update', { detail: { key, value } }));
-    return true;
-  } catch (e) {
-    console.error('localStorage.setItem error:', e);
-    return success;
-  }
-}
-
 export async function loadClubsConfig(): Promise<Club[]> {
-  const val = await getValue(STORAGE_CONFIG_KEY);
-  if (!val) {
-    await saveClubsConfig(DEFAULT_CLUBS);
+  const { data, error } = await supabase
+    .from('clubs')
+    .select('id, name, capacity, description')
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('loadClubsConfig error:', error);
     return DEFAULT_CLUBS;
   }
-  try {
-    const parsed = JSON.parse(val);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_CLUBS;
-  } catch (e) {
-    return DEFAULT_CLUBS;
-  }
+  return data && data.length > 0 ? data : DEFAULT_CLUBS;
 }
 
+// Upserts the given clubs and deletes any club rows that are no longer present.
 export async function saveClubsConfig(clubs: Club[]): Promise<boolean> {
-  return await setValue(STORAGE_CONFIG_KEY, JSON.stringify(clubs));
+  try {
+    const { data: existing, error: fetchErr } = await supabase.from('clubs').select('id');
+    if (fetchErr) throw fetchErr;
+
+    const keepIds = new Set(clubs.map(c => c.id));
+    const toDelete = (existing ?? []).filter(row => !keepIds.has(row.id)).map(row => row.id);
+
+    if (toDelete.length > 0) {
+      const { error: deleteErr } = await supabase.from('clubs').delete().in('id', toDelete);
+      if (deleteErr) throw deleteErr;
+    }
+
+    const { error: upsertErr } = await supabase.from('clubs').upsert(
+      clubs.map(c => ({
+        id: c.id,
+        name: c.name,
+        capacity: c.capacity,
+        description: c.description ?? null
+      }))
+    );
+    if (upsertErr) throw upsertErr;
+
+    return true;
+  } catch (err) {
+    console.error('saveClubsConfig error:', err);
+    return false;
+  }
 }
 
+// Full submission list. RLS only allows this for authenticated teachers;
+// anonymous callers simply get an empty array back.
 export async function loadSubmissions(): Promise<Submission[]> {
-  const val = await getValue(STORAGE_SUBMISSIONS_KEY);
-  if (!val) return [];
-  try {
-    const parsed = JSON.parse(val);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (e) {
+  const { data, error } = await supabase
+    .from('submissions')
+    .select('id, name, class, club_id, club_name, ts')
+    .order('ts', { ascending: true });
+
+  if (error) {
+    console.error('loadSubmissions error:', error);
     return [];
   }
+
+  return (data ?? []).map(row => ({
+    id: row.id,
+    name: row.name,
+    class: row.class,
+    clubId: row.club_id,
+    clubName: row.club_name,
+    ts: row.ts
+  }));
 }
 
-export async function saveSubmissions(list: Submission[]): Promise<boolean> {
-  return await setValue(STORAGE_SUBMISSIONS_KEY, JSON.stringify(list));
+// Public, privacy-safe seat counts per club (no student names exposed).
+export async function loadClubSeatCounts(): Promise<Record<string, number>> {
+  const { data, error } = await supabase.from('club_seat_counts').select('club_id, taken');
+  if (error) {
+    console.error('loadClubSeatCounts error:', error);
+    return {};
+  }
+  const counts: Record<string, number> = {};
+  for (const row of data ?? []) {
+    counts[row.club_id] = row.taken;
+  }
+  return counts;
+}
+
+export type SignupResult =
+  | { ok: true; submission: Submission }
+  | { ok: false; reason: 'duplicate' | 'full' | 'error'; message: string };
+
+export async function submitSignup(input: {
+  name: string;
+  studentClass: string;
+  clubId: string;
+  clubName: string;
+}): Promise<SignupResult> {
+  const { data: alreadyTaken, error: checkErr } = await supabase.rpc('check_name_taken', {
+    p_name: input.name
+  });
+  if (!checkErr && alreadyTaken) {
+    return {
+      ok: false,
+      reason: 'duplicate',
+      message: `A sign-up for "${input.name}" is already registered. Each student may only sign up once.`
+    };
+  }
+
+  const { data, error } = await supabase
+    .from('submissions')
+    .insert({
+      name: input.name,
+      class: input.studentClass,
+      club_id: input.clubId,
+      club_name: input.clubName
+    })
+    .select('id, name, class, club_id, club_name, ts')
+    .single();
+
+  if (error) {
+    if (error.message.includes('CLUB_FULL')) {
+      return { ok: false, reason: 'full', message: `"${input.clubName}" just reached maximum capacity. Please choose another club.` };
+    }
+    if (error.code === '23505') {
+      return {
+        ok: false,
+        reason: 'duplicate',
+        message: `A sign-up for "${input.name}" is already registered. Each student may only sign up once.`
+      };
+    }
+    console.error('submitSignup error:', error);
+    return { ok: false, reason: 'error', message: 'Failed to save your submission. Please try again.' };
+  }
+
+  return {
+    ok: true,
+    submission: {
+      id: data.id,
+      name: data.name,
+      class: data.class,
+      clubId: data.club_id,
+      clubName: data.club_name,
+      ts: data.ts
+    }
+  };
+}
+
+export async function deleteSubmission(id: string): Promise<boolean> {
+  const { error } = await supabase.from('submissions').delete().eq('id', id);
+  if (error) {
+    console.error('deleteSubmission error:', error);
+    return false;
+  }
+  return true;
+}
+
+export async function deleteAllSubmissions(): Promise<boolean> {
+  const { error } = await supabase.from('submissions').delete().not('id', 'is', null);
+  if (error) {
+    console.error('deleteAllSubmissions error:', error);
+    return false;
+  }
+  return true;
 }
 
 export function exportSubmissionsToExcel(submissions: Submission[], clubs: Club[] = []): void {
@@ -156,7 +239,7 @@ export function exportSubmissionsToCsv(submissions: Submission[]): void {
   });
 
   const csv = lines.join('\n');
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -166,4 +249,3 @@ export function exportSubmissionsToCsv(submissions: Submission[]): void {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
-

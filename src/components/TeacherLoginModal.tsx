@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import { ShieldCheck, Lock, Mail, Eye, EyeOff, AlertCircle, ArrowRight } from 'lucide-react';
 import { motion } from 'motion/react';
+import { signInTeacher } from '../services/auth';
 
 interface TeacherLoginModalProps {
   onLoginSuccess: () => void;
   onCancel: () => void;
 }
-
-const TEACHER_EMAIL = 'pgaayathri96@gmail.com';
-const TEACHER_PASS = 'Gaayathri123';
 
 export const TeacherLoginModal: React.FC<TeacherLoginModalProps> = ({
   onLoginSuccess,
@@ -20,22 +18,19 @@ export const TeacherLoginModal: React.FC<TeacherLoginModalProps> = ({
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     setIsSubmitting(true);
 
-    const trimmedEmail = email.trim().toLowerCase();
-    const trimmedPass = password.trim();
+    const result = await signInTeacher(email, password);
 
-    setTimeout(() => {
-      if (trimmedEmail === TEACHER_EMAIL.toLowerCase() && trimmedPass === TEACHER_PASS) {
-        onLoginSuccess();
-      } else {
-        setErrorMessage('Invalid teacher credentials. Please check your email and password.');
-        setIsSubmitting(false);
-      }
-    }, 300);
+    if (result.ok === true) {
+      onLoginSuccess();
+    } else {
+      setErrorMessage(result.message);
+      setIsSubmitting(false);
+    }
   };
 
   return (

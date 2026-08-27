@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Club, Submission, DEFAULT_CLUBS } from '../types';
-import { saveClubsConfig, saveSubmissions, exportSubmissionsToExcel, exportSubmissionsToCsv } from '../services/storage';
+import { saveClubsConfig, deleteSubmission, deleteAllSubmissions, exportSubmissionsToExcel, exportSubmissionsToCsv } from '../services/storage';
 import {
   Settings,
   Download,
@@ -100,7 +100,7 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
       alert('Please type RESET to confirm.');
       return;
     }
-    const ok = await saveSubmissions([]);
+    const ok = await deleteAllSubmissions();
     if (ok) {
       onSubmissionsUpdated([]);
       setShowResetModalStep1(false);
@@ -117,10 +117,9 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
     if (!confirm(`Remove registration entry for "${studentName}"? This will free up 1 spot in their club.`)) {
       return;
     }
-    const updated = submissions.filter(s => s.id !== submissionId);
-    const ok = await saveSubmissions(updated);
+    const ok = await deleteSubmission(submissionId);
     if (ok) {
-      onSubmissionsUpdated(updated);
+      onSubmissionsUpdated(submissions.filter(s => s.id !== submissionId));
     }
   };
 

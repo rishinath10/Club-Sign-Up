@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Club, Submission } from './types';
-import { loadClubsConfig, loadSubmissions } from './services/storage';
+import { loadClubsConfig, loadClubSeatCounts, loadSubmissions } from './services/storage';
+import { getTeacherSession, onTeacherAuthStateChange, signOutTeacher } from './services/auth';
 import { StudentForm } from './components/StudentForm';
 import { TeacherTools } from './components/TeacherTools';
 import { TeacherLoginModal } from './components/TeacherLoginModal';
@@ -8,14 +9,11 @@ import { GraduationCap, ShieldCheck, UserCheck, Sparkles, RefreshCw } from 'luci
 
 export default function App() {
   const [clubs, setClubs] = useState<Club[]>([]);
+  const [seatCounts, setSeatCounts] = useState<Record<string, number>>({});
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState<'STUDENT' | 'TEACHER'>('STUDENT');
-
-  // Teacher Auth State
-  const [isTeacherAuthenticated, setIsTeacherAuthenticated] = useState<boolean>(() => {
-    return typeof sessionStorage !== 'undefined' && sessionStorage.getItem('teacher-auth') === 'true';
-  });
+  const [isTeacherAuthenticated, setIsTeacherAuthenticated] = useState(false);
 
   // Handle Teacher View Click
   const handleTeacherViewClick = () => {
@@ -24,61 +22,57 @@ export default function App() {
 
   const handleTeacherLoginSuccess = () => {
     setIsTeacherAuthenticated(true);
-    sessionStorage.setItem('teacher-auth', 'true');
     setActiveView('TEACHER');
   };
 
-  const handleTeacherLogout = () => {
+  const handleTeacherLogout = async () => {
+    await signOutTeacher();
     setIsTeacherAuthenticated(false);
-    sessionStorage.removeItem('teacher-auth');
     setActiveView('STUDENT');
   };
 
-  // Load initial data
-  const refreshData = async () => {
-    try {
-      const [loadedClubs, loadedSubmissions] = await Promise.all([
-        loadClubsConfig(),
-        loadSubmissions()
-      ]);
-      setClubs(loadedClubs);
-      setSubmissions(loadedSubmissions);
-    } catch (err) {
-      console.error('Failed to load storage data:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Public data (club list + live seat counts) - safe for anonymous students
+  const refreshPublicData = useCallback(async () => {
+    const [loadedClubs, loadedCounts] = await Promise.all([loadClubsConfig(), loadClubSeatCounts()]);
+    setClubs(loadedClubs);
+    setSeatCounts(loadedCounts);
+  }, []);
+
+  // Full submission list - only ever returns rows when logged in as a teacher (enforced by RLS)
+  const refreshTeacherData = useCallback(async () => {
+    const loadedSubmissions = await loadSubmissions();
+    setSubmissions(loadedSubmissions);
+  }, []);
 
   useEffect(() => {
-    refreshData();
+    (async () => {
+      const session = await getTeacherSession();
+      setIsTeacherAuthenticated(!!session);
+      await refreshPublicData();
+      setIsLoading(false);
+    })();
 
-    // Listen for storage changes across tabs
-    const handleStorageEvent = (e: StorageEvent) => {
-      if (e.key?.includes('signup-')) {
-        refreshData();
-      }
-    };
+    const unsubscribe = onTeacherAuthStateChange(session => {
+      setIsTeacherAuthenticated(!!session);
+      if (!session) setActiveView('STUDENT');
+    });
 
-    // Custom event for same-tab updates
-    const handleCustomStorageEvent = () => {
-      refreshData();
-    };
-
-    window.addEventListener('storage', handleStorageEvent);
-    window.addEventListener('club-storage-update', handleCustomStorageEvent);
-
-    // Optional background sync every 5 seconds to catch live seat updates
+    // Background sync every 5 seconds to catch live seat updates from other devices
     const intervalId = setInterval(() => {
-      refreshData();
+      refreshPublicData();
     }, 5000);
 
     return () => {
-      window.removeEventListener('storage', handleStorageEvent);
-      window.removeEventListener('club-storage-update', handleCustomStorageEvent);
+      unsubscribe();
       clearInterval(intervalId);
     };
-  }, []);
+  }, [refreshPublicData]);
+
+  useEffect(() => {
+    if (isTeacherAuthenticated && activeView === 'TEACHER') {
+      refreshTeacherData();
+    }
+  }, [isTeacherAuthenticated, activeView, refreshTeacherData]);
 
   return (
     <div className="min-h-screen bg-[#FAF7F0] text-slate-900 font-sans antialiased selection:bg-amber-200 selection:text-slate-900">
@@ -139,11 +133,7 @@ export default function App() {
             <p className="text-slate-600 font-medium text-sm">Loading clubs and live seating...</p>
           </div>
         ) : activeView === 'STUDENT' ? (
-          <StudentForm
-            clubs={clubs}
-            submissions={submissions}
-            onSubmissionsUpdated={updated => setSubmissions(updated)}
-          />
+          <StudentForm clubs={clubs} seatCounts={seatCounts} onSubmitted={refreshPublicData} />
         ) : !isTeacherAuthenticated ? (
           <TeacherLoginModal
             onLoginSuccess={handleTeacherLoginSuccess}
@@ -153,8 +143,14 @@ export default function App() {
           <TeacherTools
             clubs={clubs}
             submissions={submissions}
-            onClubsUpdated={updated => setClubs(updated)}
-            onSubmissionsUpdated={updated => setSubmissions(updated)}
+            onClubsUpdated={updated => {
+              setClubs(updated);
+              refreshPublicData();
+            }}
+            onSubmissionsUpdated={() => {
+              refreshTeacherData();
+              refreshPublicData();
+            }}
             onLogout={handleTeacherLogout}
           />
         )}
