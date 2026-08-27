@@ -1,1 +1,26 @@
 @import "tailwindcss";
+
+@theme {
+  /* Emerald green - from the crest's shield quadrants */
+  --color-brand-emerald-950: #081f17;
+  --color-brand-emerald-900: #0f3a2a;
+  --color-brand-emerald-800: #164a36;
+  --color-brand-emerald-700: #1e5c43;
+  --color-brand-emerald-600: #2a7857;
+  --color-brand-emerald-500: #3b9873;
+  --color-brand-emerald-400: #63b594;
+  --color-brand-emerald-100: #dcefe6;
+  --color-brand-emerald-50: #f1faf6;
+
+  /* Turmeric yellow - from the crest's gold quadrants & banner */
+  --color-brand-turmeric-700: #a66a00;
+  --color-brand-turmeric-600: #c68a00;
+  --color-brand-turmeric-500: #e3a008;
+  --color-brand-turmeric-400: #f0b429;
+  --color-brand-turmeric-200: #f7dda0;
+  --color-brand-turmeric-100: #fbeacb;
+  --color-brand-turmeric-50: #fef8ea;
+
+  /* Cream - page background */
+  --color-brand-cream: #fbf6e9;
+}

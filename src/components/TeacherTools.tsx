@@ -159,21 +159,21 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
   return (
     <div className="space-y-8">
       {/* Header Banner */}
-      <div className="bg-slate-900 text-white rounded-2xl p-6 md:p-8 shadow-sm">
+      <div className="bg-brand-emerald-900 text-white rounded-2xl p-6 md:p-8 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 text-amber-400 text-xs font-semibold uppercase tracking-wider">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-emerald-800 text-brand-turmeric-400 text-xs font-semibold uppercase tracking-wider">
                 <Settings className="w-3.5 h-3.5" />
                 Teacher Control Panel
               </div>
-              <span className="text-xs text-slate-400 bg-slate-800/80 border border-slate-700/60 px-2.5 py-1 rounded-full flex items-center gap-1 font-medium">
+              <span className="text-xs text-brand-emerald-400 bg-brand-emerald-800/80 border border-brand-emerald-700/60 px-2.5 py-1 rounded-full flex items-center gap-1 font-medium">
                 <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
                 pgaayathri96@gmail.com
               </span>
             </div>
             <h2 className="text-2xl font-bold">Manage Clubs & Responses</h2>
-            <p className="text-slate-400 text-sm mt-1">
+            <p className="text-brand-emerald-400 text-sm mt-1">
               Configure capacities, view student sign-ups, and export records directly to Excel (.xlsx).
             </p>
           </div>
@@ -183,7 +183,7 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
               type="button"
               onClick={() => exportSubmissionsToExcel(submissions, clubs)}
               disabled={submissions.length === 0}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 disabled:opacity-50 disabled:hover:bg-emerald-500 text-slate-950 font-bold text-sm transition-colors cursor-pointer shadow-sm"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 disabled:opacity-50 disabled:hover:bg-emerald-500 text-brand-emerald-950 font-bold text-sm transition-colors cursor-pointer shadow-sm"
             >
               <FileSpreadsheet className="w-4 h-4" />
               Export to Excel (.xlsx)
@@ -193,7 +193,7 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
               type="button"
               onClick={() => exportSubmissionsToCsv(submissions)}
               disabled={submissions.length === 0}
-              className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 disabled:opacity-40 text-xs font-semibold transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-brand-emerald-800 hover:bg-brand-emerald-700 text-brand-emerald-100 disabled:opacity-40 text-xs font-semibold transition-colors cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
               CSV
@@ -214,24 +214,24 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
         </div>
 
         {/* Quick Analytics Bar */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-800 text-sm">
-          <div className="bg-slate-800/60 rounded-xl p-3.5 border border-slate-800">
-            <span className="text-slate-400 text-xs block font-medium">Total Sign-Ups</span>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-brand-emerald-800 text-sm">
+          <div className="bg-brand-emerald-800/60 rounded-xl p-3.5 border border-brand-emerald-800">
+            <span className="text-brand-emerald-400 text-xs block font-medium">Total Sign-Ups</span>
             <span className="text-xl font-bold text-white mt-0.5 block">{totalSubmissionsCount}</span>
           </div>
 
-          <div className="bg-slate-800/60 rounded-xl p-3.5 border border-slate-800">
-            <span className="text-slate-400 text-xs block font-medium">Total Spots Capacity</span>
+          <div className="bg-brand-emerald-800/60 rounded-xl p-3.5 border border-brand-emerald-800">
+            <span className="text-brand-emerald-400 text-xs block font-medium">Total Spots Capacity</span>
             <span className="text-xl font-bold text-white mt-0.5 block">{totalCapacity}</span>
           </div>
 
-          <div className="bg-slate-800/60 rounded-xl p-3.5 border border-slate-800">
-            <span className="text-slate-400 text-xs block font-medium">Overall Fill Rate</span>
-            <span className="text-xl font-bold text-amber-400 mt-0.5 block">{fillPercentage}%</span>
+          <div className="bg-brand-emerald-800/60 rounded-xl p-3.5 border border-brand-emerald-800">
+            <span className="text-brand-emerald-400 text-xs block font-medium">Overall Fill Rate</span>
+            <span className="text-xl font-bold text-brand-turmeric-400 mt-0.5 block">{fillPercentage}%</span>
           </div>
 
-          <div className="bg-slate-800/60 rounded-xl p-3.5 border border-slate-800">
-            <span className="text-slate-400 text-xs block font-medium">Clubs at Max Limit</span>
+          <div className="bg-brand-emerald-800/60 rounded-xl p-3.5 border border-brand-emerald-800">
+            <span className="text-brand-emerald-400 text-xs block font-medium">Clubs at Max Limit</span>
             <span className="text-xl font-bold text-rose-400 mt-0.5 block">
               {fullClubsCount} / {clubs.length}
             </span>
@@ -243,11 +243,11 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
       <div className="bg-white rounded-2xl border border-stone-200 p-6 md:p-8 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Building className="w-5 h-5 text-indigo-600" />
+            <h3 className="text-lg font-bold text-brand-emerald-900 flex items-center gap-2">
+              <Building className="w-5 h-5 text-brand-turmeric-600" />
               Club Names & Capacity Limits
             </h3>
-            <p className="text-slate-500 text-xs mt-0.5">
+            <p className="text-brand-emerald-500 text-xs mt-0.5">
               Adjust maximum student capacity or edit club titles without touching code.
             </p>
           </div>
@@ -256,14 +256,14 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
             <button
               type="button"
               onClick={handleRestoreDefaults}
-              className="text-xs text-slate-600 hover:text-slate-900 px-3 py-1.5 rounded-lg border border-stone-200 hover:border-stone-300 font-medium transition-colors"
+              className="text-xs text-brand-emerald-600 hover:text-brand-emerald-900 px-3 py-1.5 rounded-lg border border-stone-200 hover:border-stone-300 font-medium transition-colors"
             >
               Restore Defaults
             </button>
             <button
               type="button"
               onClick={handleAddClub}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-slate-900 text-xs font-semibold transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-brand-emerald-900 text-xs font-semibold transition-colors cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               Add Club
@@ -283,7 +283,7 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
               >
                 <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
                   <div className="md:col-span-6">
-                    <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">
+                    <label className="block text-[11px] font-semibold text-brand-emerald-500 uppercase mb-1">
                       Club Name
                     </label>
                     <input
@@ -294,12 +294,12 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
                         next[idx].name = e.target.value;
                         setEditedClubs(next);
                       }}
-                      className="w-full px-3 py-1.5 text-sm rounded-lg border border-stone-300 bg-white font-medium text-slate-900"
+                      className="w-full px-3 py-1.5 text-sm rounded-lg border border-stone-300 bg-white font-medium text-brand-emerald-900"
                     />
                   </div>
 
                   <div className="md:col-span-3">
-                    <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">
+                    <label className="block text-[11px] font-semibold text-brand-emerald-500 uppercase mb-1">
                       Capacity Limit
                     </label>
                     <input
@@ -311,13 +311,13 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
                         next[idx].capacity = parseInt(e.target.value, 10) || 1;
                         setEditedClubs(next);
                       }}
-                      className="w-full px-3 py-1.5 text-sm rounded-lg border border-stone-300 bg-white font-medium text-slate-900"
+                      className="w-full px-3 py-1.5 text-sm rounded-lg border border-stone-300 bg-white font-medium text-brand-emerald-900"
                     />
                   </div>
 
-                  <div className="md:col-span-3 text-xs text-slate-500 pt-2 md:pt-4">
-                    <span className="font-semibold text-slate-700">{currentSignedUp}</span> of{' '}
-                    <span className="font-semibold text-slate-700">{club.capacity}</span> taken
+                  <div className="md:col-span-3 text-xs text-brand-emerald-500 pt-2 md:pt-4">
+                    <span className="font-semibold text-brand-emerald-700">{currentSignedUp}</span> of{' '}
+                    <span className="font-semibold text-brand-emerald-700">{club.capacity}</span> taken
                     {isAtCap && (
                       <span className="ml-2 text-rose-600 font-bold bg-rose-50 px-1.5 py-0.5 rounded">
                         Full
@@ -358,7 +358,7 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
             type="button"
             onClick={handleSaveClubs}
             disabled={isSavingClubs}
-            className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold transition-all cursor-pointer shadow-xs"
+            className="px-5 py-2.5 rounded-xl bg-brand-emerald-900 hover:bg-brand-emerald-800 text-white text-sm font-bold transition-all cursor-pointer shadow-xs"
           >
             {isSavingClubs ? 'Saving...' : 'Save Capacities'}
           </button>
@@ -369,11 +369,11 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
       <div className="bg-white rounded-2xl border border-stone-200 p-6 md:p-8 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <h3 className="text-lg font-bold text-brand-emerald-900 flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-emerald-600" />
               Student Responses ({submissions.length})
             </h3>
-            <p className="text-slate-500 text-xs mt-0.5">
+            <p className="text-brand-emerald-500 text-xs mt-0.5">
               Live submission log updated as students complete their sign-ups.
             </p>
           </div>
@@ -381,13 +381,13 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
           <div className="flex flex-col sm:flex-row items-center gap-2.5">
             {/* Search Input */}
             <div className="relative w-full sm:w-48">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-brand-emerald-400" />
               <input
                 type="text"
                 placeholder="Search student..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-stone-300 focus:outline-none focus:border-slate-800"
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-stone-300 focus:outline-none focus:border-brand-emerald-800"
               />
             </div>
 
@@ -395,7 +395,7 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
             <select
               value={selectedClubFilter}
               onChange={e => setSelectedClubFilter(e.target.value)}
-              className="w-full sm:w-auto px-3 py-1.5 text-xs rounded-xl border border-stone-300 bg-white font-medium text-slate-700"
+              className="w-full sm:w-auto px-3 py-1.5 text-xs rounded-xl border border-stone-300 bg-white font-medium text-brand-emerald-700"
             >
               <option value="ALL">All Clubs</option>
               {clubs.map(c => (
@@ -410,15 +410,15 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
         {filteredSubmissions.length === 0 ? (
           <div className="text-center py-12 border-2 border-dashed border-stone-200 rounded-xl">
             <Users className="w-8 h-8 text-stone-300 mx-auto mb-2" />
-            <p className="text-slate-500 text-sm font-medium">No student sign-ups recorded yet.</p>
-            <p className="text-slate-400 text-xs mt-1">
+            <p className="text-brand-emerald-500 text-sm font-medium">No student sign-ups recorded yet.</p>
+            <p className="text-brand-emerald-400 text-xs mt-1">
               Submissions will appear here automatically when students fill out the form.
             </p>
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-stone-200">
             <table className="w-full text-left text-xs">
-              <thead className="bg-stone-100/80 text-slate-600 font-semibold uppercase tracking-wider border-b border-stone-200">
+              <thead className="bg-stone-100/80 text-brand-emerald-600 font-semibold uppercase tracking-wider border-b border-stone-200">
                 <tr>
                   <th className="p-3">#</th>
                   <th className="p-3">Student Name</th>
@@ -428,18 +428,18 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
                   <th className="p-3 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-100 text-slate-800">
+              <tbody className="divide-y divide-stone-100 text-brand-emerald-800">
                 {filteredSubmissions.map((sub, index) => (
                   <tr key={sub.id || index} className="hover:bg-stone-50/80 transition-colors">
-                    <td className="p-3 font-mono text-slate-400">{index + 1}</td>
-                    <td className="p-3 font-bold text-slate-900">{sub.name}</td>
-                    <td className="p-3 font-medium text-slate-700">{sub.class}</td>
+                    <td className="p-3 font-mono text-brand-emerald-400">{index + 1}</td>
+                    <td className="p-3 font-bold text-brand-emerald-900">{sub.name}</td>
+                    <td className="p-3 font-medium text-brand-emerald-700">{sub.class}</td>
                     <td className="p-3">
-                      <span className="inline-block bg-indigo-50 text-indigo-700 border border-indigo-100 px-2.5 py-0.5 rounded-md font-semibold">
+                      <span className="inline-block bg-brand-turmeric-50 text-brand-turmeric-700 border border-brand-turmeric-100 px-2.5 py-0.5 rounded-md font-semibold">
                         {sub.clubName}
                       </span>
                     </td>
-                    <td className="p-3 text-slate-500">
+                    <td className="p-3 text-brand-emerald-500">
                       {sub.ts ? new Date(sub.ts).toLocaleString() : 'N/A'}
                     </td>
                     <td className="p-3 text-right">
@@ -461,9 +461,9 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
 
         {/* Bottom Actions */}
         <div className="mt-6 pt-6 border-t border-stone-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="text-xs text-slate-500">
-            Showing <span className="font-bold text-slate-800">{filteredSubmissions.length}</span> of{' '}
-            <span className="font-bold text-slate-800">{submissions.length}</span> total entries
+          <div className="text-xs text-brand-emerald-500">
+            Showing <span className="font-bold text-brand-emerald-800">{filteredSubmissions.length}</span> of{' '}
+            <span className="font-bold text-brand-emerald-800">{submissions.length}</span> total entries
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
@@ -471,7 +471,7 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
               type="button"
               onClick={() => exportSubmissionsToExcel(submissions, clubs)}
               disabled={submissions.length === 0}
-              className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold text-slate-950 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+              className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold text-brand-emerald-950 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
             >
               <FileSpreadsheet className="w-3.5 h-3.5" />
               Export to Excel (.xlsx)
@@ -492,7 +492,7 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
 
       {/* Step 1 Reset Confirmation Modal */}
       {showResetModalStep1 && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-brand-emerald-950/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -500,16 +500,16 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
           >
             <div className="flex items-center gap-3 text-rose-600 mb-3">
               <AlertTriangle className="w-6 h-6" />
-              <h3 className="text-lg font-bold text-slate-900">Reset All Submissions?</h3>
+              <h3 className="text-lg font-bold text-brand-emerald-900">Reset All Submissions?</h3>
             </div>
-            <p className="text-slate-600 text-sm mb-6 leading-relaxed">
-              This action will permanently delete all <strong className="text-slate-900">{submissions.length}</strong> student sign-up records. Your club names and capacity limits will remain saved.
+            <p className="text-brand-emerald-600 text-sm mb-6 leading-relaxed">
+              This action will permanently delete all <strong className="text-brand-emerald-900">{submissions.length}</strong> student sign-up records. Your club names and capacity limits will remain saved.
             </p>
             <div className="flex items-center justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setShowResetModalStep1(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-stone-100 transition-colors cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-brand-emerald-600 hover:bg-stone-100 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -530,14 +530,14 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
 
       {/* Step 2 Double Confirmation Modal */}
       {showResetModalStep2 && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-brand-emerald-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-stone-200"
           >
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-bold text-slate-900">Final Confirmation</h3>
+              <h3 className="text-lg font-bold text-brand-emerald-900">Final Confirmation</h3>
               <button
                 type="button"
                 onClick={() => setShowResetModalStep2(false)}
@@ -546,7 +546,7 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-slate-600 text-sm mb-4">
+            <p className="text-brand-emerald-600 text-sm mb-4">
               To prevent accidental deletion, please type <strong className="font-mono text-rose-600">RESET</strong> in the box below to erase all responses:
             </p>
             <input
@@ -563,7 +563,7 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
                   setShowResetModalStep2(false);
                   setResetConfirmInput('');
                 }}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-stone-100 cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-brand-emerald-600 hover:bg-stone-100 cursor-pointer"
               >
                 Cancel
               </button>
