@@ -15,6 +15,29 @@ export interface Submission {
   ts: string;
 }
 
+// Emoji keyed by club id, so the club list is scannable at a glance instead of
+// being 15 near-identical rows of text. Falls back to a star for any club a
+// teacher adds later that isn't in this map.
+export const CLUB_ICONS: Record<string, string> = {
+  'arts-craft-club': '🎨',
+  'chess-club': '♟️',
+  'coding-club': '💻',
+  'culinary-club': '🍳',
+  'dance-club': '💃',
+  'entrepreneurship-club': '💡',
+  'futsal-club': '⚽',
+  'literary-society': '📖',
+  'music-club': '🎵',
+  'public-speaking-club': '🎤',
+  'science-innovation-club': '🔬',
+  'scrabble-club': '🔤',
+  'table-tennis-club': '🏓',
+  'taekwondo': '🥋',
+  'theatre-performing-arts': '🎭'
+};
+
+export const DEFAULT_CLUB_ICON = '⭐';
+
 export const DEFAULT_CLUBS: Club[] = [
   { id: 'arts-craft-club', name: 'Arts & Craft Club', capacity: 30 },
   { id: 'chess-club', name: 'Chess Club', capacity: 30 },

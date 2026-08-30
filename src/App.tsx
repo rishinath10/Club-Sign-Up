@@ -91,21 +91,37 @@ export default function App() {
 
       <main className="max-w-3xl mx-auto px-4 py-8 md:py-12">
         {/* Header */}
-        <header className="border-b-2 border-stone-200 pb-6 mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-widest text-brand-turmeric-600 mb-1">
-              <GraduationCap className="w-4 h-4" />
-              Cocurricular Sign-Up
-            </div>
-            <h1 className="text-3xl md:text-4xl font-extrabold text-brand-emerald-950 tracking-tight">
-              {activeView === 'STUDENT' ? 'Choose Your Club' : 'Teacher Dashboard'}
-            </h1>
-            <p className="text-brand-emerald-600 text-sm md:text-base mt-1.5">
-              {activeView === 'STUDENT'
-                ? 'Select one club below. Once a club reaches its seat limit, it closes automatically.'
-                : 'Configure club capacities, monitor real-time submissions, and export records.'}
-            </p>
+        <header className="border-b-2 border-stone-200 pb-6 mb-8">
+          {/* School identity */}
+          <div className="flex items-center justify-center gap-3 sm:gap-4 mb-6">
+            <img
+              src="stars-crest.png"
+              alt=""
+              aria-hidden="true"
+              className="h-14 sm:h-20 w-auto shrink-0"
+            />
+            <img
+              src="stars-wordmark.png"
+              alt="Stars International School"
+              className="h-9 sm:h-12 w-auto shrink-0"
+            />
           </div>
+
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-widest text-brand-turmeric-600 mb-1">
+                <GraduationCap className="w-4 h-4" />
+                Cocurricular Sign-Up
+              </div>
+              <h1 className="text-3xl md:text-4xl font-extrabold text-brand-emerald-950 tracking-tight">
+                {activeView === 'STUDENT' ? 'Choose Your Club' : 'Teacher Dashboard'}
+              </h1>
+              <p className="text-brand-emerald-600 text-sm md:text-base mt-1.5">
+                {activeView === 'STUDENT'
+                  ? 'Sign up in two quick steps. Clubs close automatically once they fill up.'
+                  : 'Configure club capacities, monitor real-time submissions, and export records.'}
+              </p>
+            </div>
 
           {/* Mode Navigation Pills - hidden from students; only shown once teacher access is revealed */}
           {showTeacherAccess && (
@@ -135,7 +151,8 @@ export default function App() {
                 Teacher Tools
               </button>
             </div>
-          )}
+            )}
+          </div>
         </header>
 
         {/* Content Body */}
@@ -186,10 +203,7 @@ export default function App() {
             </button>
           )}
           <p className="text-[11px] text-brand-emerald-400 mt-2">
-            Shared persistent storage enabled &bull; Real-time seat updates
-          </p>
-          <p className="text-[10px] text-brand-emerald-300 mt-1">
-            DB: {new URL(import.meta.env.VITE_SUPABASE_URL).hostname}
+            Stars International School &bull; Cocurricular Club Sign-Up
           </p>
         </footer>
       </main>
