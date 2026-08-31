@@ -42,6 +42,39 @@ alter table public.clubs enable row level security;
 alter table public.submissions enable row level security;
 
 -- ---------------------------------------------------------------------------
+-- Teacher allowlist
+--
+-- Supabase allows public signup through the auth API by default. If every
+-- policy below trusted "any authenticated user", anyone who noticed that and
+-- self-registered would land full teacher access - read every student's
+-- name and class, edit clubs, delete all submissions. The anon key is
+-- necessarily public (it ships in the JS bundle), so "authenticated" alone
+-- is not a real permission boundary. This table is the actual one.
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.teachers (
+  user_id uuid primary key,
+  email text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.teachers enable row level security;
+-- No policies on purpose: unreachable via the REST API, readable only by
+-- the security-definer helper below.
+
+create or replace function public.is_teacher()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (select 1 from public.teachers where user_id = auth.uid());
+$$;
+
+grant execute on function public.is_teacher() to anon, authenticated;
+
+-- ---------------------------------------------------------------------------
 -- RLS policies
 -- ---------------------------------------------------------------------------
 
@@ -51,7 +84,7 @@ create policy "clubs_public_read" on public.clubs
 
 drop policy if exists "clubs_teacher_write" on public.clubs;
 create policy "clubs_teacher_write" on public.clubs
-  for all to authenticated using (true) with check (true);
+  for all to authenticated using (public.is_teacher()) with check (public.is_teacher());
 
 -- Students can submit sign-ups, but cannot read the raw submissions table
 -- (that would expose every other student's name/class to anyone with
@@ -62,18 +95,25 @@ create policy "submissions_public_insert" on public.submissions
 
 drop policy if exists "submissions_teacher_read" on public.submissions;
 create policy "submissions_teacher_read" on public.submissions
-  for select to authenticated using (true);
+  for select to authenticated using (public.is_teacher());
 
 drop policy if exists "submissions_teacher_update" on public.submissions;
 create policy "submissions_teacher_update" on public.submissions
-  for update to authenticated using (true) with check (true);
+  for update to authenticated using (public.is_teacher()) with check (public.is_teacher());
 
 drop policy if exists "submissions_teacher_delete" on public.submissions;
 create policy "submissions_teacher_delete" on public.submissions
-  for delete to authenticated using (true);
+  for delete to authenticated using (public.is_teacher());
 
 -- ---------------------------------------------------------------------------
 -- Public, privacy-safe seat counts (no student names exposed)
+--
+-- security_invoker must stay OFF here: that's what lets this view aggregate
+-- submissions on behalf of anonymous students, who otherwise have zero read
+-- access to that table. Turning it on (the seemingly-more-locked-down
+-- option) actually breaks the view instead - it runs as the caller, an
+-- anonymous student can read nothing, and every club silently shows 0/N
+-- taken regardless of how many students already signed up.
 -- ---------------------------------------------------------------------------
 
 create or replace view public.club_seat_counts as
@@ -81,7 +121,7 @@ create or replace view public.club_seat_counts as
   from public.submissions
   group by club_id;
 
-alter view public.club_seat_counts set (security_invoker = on);
+alter view public.club_seat_counts set (security_invoker = off);
 grant select on public.club_seat_counts to anon, authenticated;
 
 -- ---------------------------------------------------------------------------
@@ -243,5 +283,17 @@ begin
   insert into auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
   values (gen_random_uuid(), v_user_id, jsonb_build_object('sub', v_user_id::text, 'email', v_email), 'email', v_user_id::text, now(), now(), now());
 
+  insert into public.teachers (user_id, email) values (v_user_id, v_email)
+  on conflict (user_id) do nothing;
+
   raise notice 'Teacher account created for %.', v_email;
 end $$;
+
+-- Belt-and-suspenders: if a teachers.user_id row somehow didn't get created
+-- above (e.g. this script's teacher-creation block was skipped because the
+-- account already existed from before this allowlist existed), backfill it
+-- by email so access isn't silently lost.
+insert into public.teachers (user_id, email)
+select id, email from auth.users
+where email = 'pgaayathri96@gmail.com'
+on conflict (user_id) do nothing;
