@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Club, CLUB_ICONS, DEFAULT_CLUB_ICON } from '../types';
+import { Club, CLUB_ICONS, DEFAULT_CLUB_ICON, SchoolLevel } from '../types';
 import { submitSignup } from '../services/storage';
 import {
   CheckCircle2,
@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from 'motion/react';
 interface StudentFormProps {
   clubs: Club[];
   seatCounts: Record<string, number>;
+  schoolLevel: SchoolLevel;
   onSubmitted: () => void | Promise<void>;
 }
 
@@ -25,7 +26,7 @@ type Step = 'DETAILS' | 'CLUB';
 
 const clubIcon = (clubId: string) => CLUB_ICONS[clubId] ?? DEFAULT_CLUB_ICON;
 
-export const StudentForm: React.FC<StudentFormProps> = ({ clubs, seatCounts, onSubmitted }) => {
+export const StudentForm: React.FC<StudentFormProps> = ({ clubs, seatCounts, schoolLevel, onSubmitted }) => {
   const [step, setStep] = useState<Step>('DETAILS');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -100,6 +101,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ clubs, seatCounts, onS
       // atomically, so this is race-condition safe even with many students
       // submitting from different devices at once.
       const result = await submitSignup({
+        schoolLevel,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         studentClass: studentClass.trim(),

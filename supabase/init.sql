@@ -4,7 +4,7 @@
 -- Run this ONCE in Supabase Studio's SQL editor (or via psql) after the
 -- self-hosted stack is up and healthy. It recreates everything the app
 -- needs: tables, RLS policies, the capacity/duplicate safeguards, the
--- teacher login, and the default 15 clubs.
+-- teacher login, and the default Primary + Secondary club lists.
 --
 -- Safe to re-run: every statement is idempotent (drop-if-exists / create-or-replace).
 
@@ -18,25 +18,32 @@ create table if not exists public.clubs (
   id text primary key,
   name text not null,
   capacity integer not null default 25,
+  school_level text not null,
   description text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  constraint clubs_school_level_check check (school_level in ('primary', 'secondary'))
 );
 
 create table if not exists public.submissions (
   id uuid primary key default gen_random_uuid(),
+  school_level text not null,
   first_name text not null,
   last_name text not null,
   class text not null,
   club_id text not null references public.clubs(id) on delete cascade,
   club_name text not null,
-  ts timestamptz not null default now()
+  ts timestamptz not null default now(),
+  constraint submissions_school_level_check check (school_level in ('primary', 'secondary'))
 );
 
 create index if not exists submissions_club_id_idx on public.submissions (club_id);
 
+-- Duplicate-name blocking is scoped PER SECTION: a Primary student and a
+-- Secondary student who happen to share a name are two different real
+-- people and must not block each other.
 drop index if exists public.submissions_name_unique_idx;
 create unique index submissions_name_unique_idx
-  on public.submissions (lower(first_name), lower(last_name));
+  on public.submissions (school_level, lower(first_name), lower(last_name));
 
 alter table public.clubs enable row level security;
 alter table public.submissions enable row level security;
@@ -113,7 +120,9 @@ create policy "submissions_teacher_delete" on public.submissions
 -- access to that table. Turning it on (the seemingly-more-locked-down
 -- option) actually breaks the view instead - it runs as the caller, an
 -- anonymous student can read nothing, and every club silently shows 0/N
--- taken regardless of how many students already signed up.
+-- taken regardless of how many students already signed up. Keyed by
+-- club_id, which already implies a school level, so both levels' counts
+-- can be fetched together safely.
 -- ---------------------------------------------------------------------------
 
 create or replace view public.club_seat_counts as
@@ -129,8 +138,9 @@ grant select on public.club_seat_counts to anon, authenticated;
 -- attempting the real insert; the unique index above is the real guard)
 -- ---------------------------------------------------------------------------
 
-drop function if exists public.check_name_taken(text);
-create or replace function public.check_name_taken(p_first_name text, p_last_name text)
+drop function if exists public.check_name_taken(text, text);
+drop function if exists public.check_name_taken(text, text, text);
+create or replace function public.check_name_taken(p_school_level text, p_first_name text, p_last_name text)
 returns boolean
 language sql
 security definer
@@ -138,11 +148,13 @@ set search_path = public
 as $$
   select exists (
     select 1 from public.submissions
-    where lower(first_name) = lower(p_first_name) and lower(last_name) = lower(p_last_name)
+    where school_level = p_school_level
+      and lower(first_name) = lower(p_first_name)
+      and lower(last_name) = lower(p_last_name)
   );
 $$;
 
-grant execute on function public.check_name_taken(text, text) to anon, authenticated;
+grant execute on function public.check_name_taken(text, text, text) to anon, authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Capacity enforcement (atomic - locks the club row so concurrent sign-ups
@@ -185,7 +197,10 @@ for each row execute function public.enforce_club_capacity();
 -- returns the row directly via SQL RETURNING, which isn't subject to that.
 -- ---------------------------------------------------------------------------
 
+drop function if exists public.submit_signup(text, text, text, text, text);
+drop function if exists public.submit_signup(text, text, text, text, text, text);
 create or replace function public.submit_signup(
+  p_school_level text,
   p_first_name text,
   p_last_name text,
   p_class text,
@@ -194,6 +209,7 @@ create or replace function public.submit_signup(
 )
 returns table (
   id uuid,
+  school_level text,
   first_name text,
   last_name text,
   class text,
@@ -207,43 +223,59 @@ set search_path = public
 as $$
 begin
   return query
-    insert into public.submissions (first_name, last_name, class, club_id, club_name)
-    values (p_first_name, p_last_name, p_class, p_club_id, p_club_name)
-    returning submissions.id, submissions.first_name, submissions.last_name,
+    insert into public.submissions (school_level, first_name, last_name, class, club_id, club_name)
+    values (p_school_level, p_first_name, p_last_name, p_class, p_club_id, p_club_name)
+    returning submissions.id, submissions.school_level, submissions.first_name, submissions.last_name,
               submissions.class, submissions.club_id, submissions.club_name, submissions.ts;
 end;
 $$;
 
-grant execute on function public.submit_signup(text, text, text, text, text) to anon, authenticated;
+grant execute on function public.submit_signup(text, text, text, text, text, text) to anon, authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Default clubs (only seeds if the table is empty, so this is safe to re-run)
 -- ---------------------------------------------------------------------------
 
-insert into public.clubs (id, name, capacity)
+insert into public.clubs (id, name, capacity, school_level)
 select * from (values
-  ('arts-craft-club', 'Arts & Craft Club', 30),
-  ('chess-club', 'Chess Club', 30),
-  ('coding-club', 'Coding Club', 30),
-  ('culinary-club', 'Culinary Club', 25),
-  ('dance-club', 'Dance Club', 30),
-  ('entrepreneurship-club', 'Entrepreneurship Club', 30),
-  ('futsal-club', 'Futsal Club', 35),
-  ('literary-society', 'Literary Society', 30),
-  ('music-club', 'Music Club', 30),
-  ('public-speaking-club', 'Public Speaking Club', 30),
-  ('science-innovation-club', 'Science & Innovation Club', 30),
-  ('scrabble-club', 'Scrabble Club', 30),
-  ('table-tennis-club', 'Table Tennis Club', 30),
-  ('taekwondo', 'Taekwondo', 30),
-  ('theatre-performing-arts', 'Theatre & Performing Arts', 30)
-) as v(id, name, capacity)
+  -- Primary School
+  ('arts-craft-club', 'Arts & Craft Club', 30, 'primary'),
+  ('chess-club', 'Chess Club', 30, 'primary'),
+  ('coding-club', 'Coding Club', 30, 'primary'),
+  ('culinary-club', 'Culinary Club', 25, 'primary'),
+  ('dance-club', 'Dance Club', 30, 'primary'),
+  ('entrepreneurship-club', 'Entrepreneurship Club', 30, 'primary'),
+  ('futsal-club', 'Futsal Club', 35, 'primary'),
+  ('literary-society', 'Literary Society', 30, 'primary'),
+  ('music-club', 'Music Club', 30, 'primary'),
+  ('public-speaking-club', 'Public Speaking Club', 30, 'primary'),
+  ('science-innovation-club', 'Science & Innovation Club', 30, 'primary'),
+  ('scrabble-club', 'Scrabble Club', 30, 'primary'),
+  ('table-tennis-club', 'Table Tennis Club', 30, 'primary'),
+  ('taekwondo', 'Taekwondo', 30, 'primary'),
+  ('theatre-performing-arts', 'Theatre & Performing Arts', 30, 'primary'),
+  -- Secondary School
+  ('secondary-chess-club', 'Chess Club', 35, 'secondary'),
+  ('secondary-coding-club', 'Coding Club', 25, 'secondary'),
+  ('secondary-culinary-club', 'Culinary Club', 30, 'secondary'),
+  ('secondary-entrepreneurship-club', 'Entrepreneurship Club', 30, 'secondary'),
+  ('secondary-futsal-club', 'Futsal Club', 35, 'secondary'),
+  ('secondary-interact-club', 'Interact Club', 30, 'secondary'),
+  ('secondary-media-visual-arts-club', 'Media & Visual Arts Club', 30, 'secondary'),
+  ('secondary-model-united-nations', 'Model United Nations', 30, 'secondary'),
+  ('secondary-music-band', 'Music Band', 30, 'secondary'),
+  ('secondary-photography-production', 'Photography & Production', 25, 'secondary'),
+  ('secondary-ping-pong-club', 'Ping Pong Club', 25, 'secondary'),
+  ('secondary-science-innovation-club', 'Science & Innovation Club', 25, 'secondary'),
+  ('secondary-taekwondo-club', 'Taekwondo Club', 25, 'secondary'),
+  ('secondary-youth-volunteer-club', 'Youth Volunteer & Community Service Club', 25, 'secondary')
+) as v(id, name, capacity, school_level)
 where not exists (select 1 from public.clubs);
 
 -- ---------------------------------------------------------------------------
 -- Teacher login account
 --
--- IMPORTANT: change p_email / p_password below before running, or change the
+-- IMPORTANT: change v_password below before running, or change the
 -- password immediately after logging in. This block is idempotent - it does
 -- nothing if that email already has an account.
 -- ---------------------------------------------------------------------------

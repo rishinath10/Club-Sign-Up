@@ -1,6 +1,15 @@
-import React, { useState } from 'react';
-import { Club, Submission, DEFAULT_CLUBS } from '../types';
-import { saveClubsConfig, deleteSubmission, deleteAllSubmissions, exportSubmissionsToExcel, exportSubmissionsToCsv } from '../services/storage';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Club, Submission, SchoolLevel, defaultClubsFor } from '../types';
+import {
+  loadClubsConfig,
+  loadSubmissions,
+  saveClubsConfig,
+  deleteSubmission,
+  deleteAllSubmissions,
+  exportSubmissionsToExcel,
+  exportSubmissionsToCsv
+} from '../services/storage';
+import { getTeacherSession } from '../services/auth';
 import {
   Settings,
   Download,
@@ -17,29 +26,33 @@ import {
   X,
   FileSpreadsheet,
   LogOut,
-  UserCheck
+  UserCheck,
+  RefreshCw,
+  Backpack,
+  School
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface TeacherToolsProps {
-  clubs: Club[];
-  submissions: Submission[];
-  onClubsUpdated: (clubs: Club[]) => void;
-  onSubmissionsUpdated: (submissions: Submission[]) => void;
   onLogout?: () => void;
 }
 
-export const TeacherTools: React.FC<TeacherToolsProps> = ({
-  clubs,
-  submissions,
-  onClubsUpdated,
-  onSubmissionsUpdated,
-  onLogout
-}) => {
-  const [editedClubs, setEditedClubs] = useState<Club[]>(JSON.parse(JSON.stringify(clubs)));
+const LEVELS: { key: SchoolLevel; label: string; icon: typeof Backpack }[] = [
+  { key: 'primary', label: 'Primary School', icon: Backpack },
+  { key: 'secondary', label: 'Secondary School', icon: School }
+];
+
+export const TeacherTools: React.FC<TeacherToolsProps> = ({ onLogout }) => {
+  const [activeLevel, setActiveLevel] = useState<SchoolLevel>('primary');
+  const [teacherEmail, setTeacherEmail] = useState<string | null>(null);
+
+  const [clubs, setClubs] = useState<Club[]>([]);
+  const [editedClubs, setEditedClubs] = useState<Club[]>([]);
+  const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSavingClubs, setIsSavingClubs] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
-  
+
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClubFilter, setSelectedClubFilter] = useState('ALL');
@@ -48,6 +61,38 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
   const [showResetModalStep1, setShowResetModalStep1] = useState(false);
   const [showResetModalStep2, setShowResetModalStep2] = useState(false);
   const [resetConfirmInput, setResetConfirmInput] = useState('');
+
+  const refreshClubs = useCallback(async (level: SchoolLevel) => {
+    const loaded = await loadClubsConfig(level);
+    setClubs(loaded);
+    setEditedClubs(JSON.parse(JSON.stringify(loaded)));
+  }, []);
+
+  const refreshSubmissions = useCallback(async () => {
+    const loaded = await loadSubmissions();
+    setAllSubmissions(loaded);
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      const session = await getTeacherSession();
+      setTeacherEmail(session?.user?.email ?? null);
+      await Promise.all([refreshClubs('primary'), refreshSubmissions()]);
+      setIsLoading(false);
+    })();
+  }, [refreshClubs, refreshSubmissions]);
+
+  // Switching sections: reset per-section UI state and load that section's clubs
+  const handleSwitchLevel = async (level: SchoolLevel) => {
+    if (level === activeLevel) return;
+    setActiveLevel(level);
+    setSearchQuery('');
+    setSelectedClubFilter('ALL');
+    setSaveSuccessMsg('');
+    await refreshClubs(level);
+  };
+
+  const submissionsForLevel = allSubmissions.filter(s => s.schoolLevel === activeLevel);
 
   // Handle saving club changes
   const handleSaveClubs = async () => {
@@ -58,12 +103,13 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
     const sanitizedClubs = editedClubs.map(c => ({
       ...c,
       name: c.name.trim() || 'Untitled Club',
-      capacity: Math.max(1, Number(c.capacity) || 1)
+      capacity: Math.max(1, Number(c.capacity) || 1),
+      schoolLevel: activeLevel
     }));
 
-    const ok = await saveClubsConfig(sanitizedClubs);
+    const ok = await saveClubsConfig(activeLevel, sanitizedClubs);
     if (ok) {
-      onClubsUpdated(sanitizedClubs);
+      setClubs(sanitizedClubs);
       setEditedClubs(sanitizedClubs);
       setSaveSuccessMsg('Club configurations saved successfully!');
       setTimeout(() => setSaveSuccessMsg(''), 3000);
@@ -73,11 +119,12 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
 
   // Add new club
   const handleAddClub = () => {
-    const newId = `club-${Date.now()}`;
+    const newId = `${activeLevel}-club-${Date.now()}`;
     const newClub: Club = {
       id: newId,
       name: 'New Club',
       capacity: 25,
+      schoolLevel: activeLevel,
       description: 'Activity description...'
     };
     setEditedClubs([...editedClubs, newClub]);
@@ -85,7 +132,7 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
 
   // Delete a club from config
   const handleDeleteClub = (clubId: string) => {
-    const studentCount = submissions.filter(s => s.clubId === clubId).length;
+    const studentCount = allSubmissions.filter(s => s.clubId === clubId).length;
     if (studentCount > 0) {
       if (!confirm(`Warning: ${studentCount} student(s) are signed up for this club. Deleting this club will remove it from future choices. Continue?`)) {
         return;
@@ -94,19 +141,19 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
     setEditedClubs(editedClubs.filter(c => c.id !== clubId));
   };
 
-  // Reset all submissions (Double confirmation)
+  // Reset all submissions for the active section only (Double confirmation)
   const handlePerformResetSubmissions = async () => {
     if (resetConfirmInput.trim().toLowerCase() !== 'reset') {
       alert('Please type RESET to confirm.');
       return;
     }
-    const ok = await deleteAllSubmissions();
+    const ok = await deleteAllSubmissions(activeLevel);
     if (ok) {
-      onSubmissionsUpdated([]);
+      await refreshSubmissions();
       setShowResetModalStep1(false);
       setShowResetModalStep2(false);
       setResetConfirmInput('');
-      alert('All student submissions have been cleared successfully.');
+      alert(`All ${LEVELS.find(l => l.key === activeLevel)?.label} submissions have been cleared successfully.`);
     } else {
       alert('Failed to reset submissions.');
     }
@@ -119,25 +166,27 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
     }
     const ok = await deleteSubmission(submissionId);
     if (ok) {
-      onSubmissionsUpdated(submissions.filter(s => s.id !== submissionId));
+      setAllSubmissions(allSubmissions.filter(s => s.id !== submissionId));
     }
   };
 
-  // Restore default clubs
+  // Restore default clubs for the active section
   const handleRestoreDefaults = async () => {
-    if (confirm('Restore the default clubs list? This will overwrite your current club list.')) {
-      const ok = await saveClubsConfig(DEFAULT_CLUBS);
+    const label = LEVELS.find(l => l.key === activeLevel)?.label;
+    if (confirm(`Restore the default ${label} clubs list? This will overwrite your current club list for this section only.`)) {
+      const defaults = defaultClubsFor(activeLevel);
+      const ok = await saveClubsConfig(activeLevel, defaults);
       if (ok) {
-        onClubsUpdated(DEFAULT_CLUBS);
-        setEditedClubs(JSON.parse(JSON.stringify(DEFAULT_CLUBS)));
+        setClubs(defaults);
+        setEditedClubs(JSON.parse(JSON.stringify(defaults)));
         setSaveSuccessMsg('Default clubs restored.');
         setTimeout(() => setSaveSuccessMsg(''), 3000);
       }
     }
   };
 
-  // Filter submissions
-  const filteredSubmissions = submissions.filter(s => {
+  // Filter submissions (already scoped to the active section)
+  const filteredSubmissions = submissionsForLevel.filter(s => {
     const matchesSearch =
       s.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -147,348 +196,382 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
     return matchesSearch && matchesClub;
   });
 
-  // Analytics Metrics
-  const totalSubmissionsCount = submissions.length;
+  // Analytics Metrics (scoped to the active section)
+  const totalSubmissionsCount = submissionsForLevel.length;
   const totalCapacity = clubs.reduce((acc, c) => acc + c.capacity, 0);
   const fillPercentage = totalCapacity > 0 ? Math.round((totalSubmissionsCount / totalCapacity) * 100) : 0;
-  
+
   const fullClubsCount = clubs.filter(c => {
-    const count = submissions.filter(s => s.clubId === c.id).length;
+    const count = submissionsForLevel.filter(s => s.clubId === c.id).length;
     return count >= c.capacity;
   }).length;
 
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-2xl border border-stone-200 p-12 text-center my-8 shadow-xs">
+        <RefreshCw className="w-8 h-8 text-brand-emerald-400 animate-spin mx-auto mb-3" />
+        <p className="text-brand-emerald-600 font-medium text-sm">Loading dashboard...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8">
-      {/* Header Banner */}
-      <div className="bg-brand-emerald-900 text-white rounded-2xl p-6 md:p-8 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-emerald-800 text-brand-turmeric-400 text-xs font-semibold uppercase tracking-wider">
-                <Settings className="w-3.5 h-3.5" />
-                Teacher Control Panel
+    <div className="space-y-6">
+      {/* Section Switcher */}
+      <div className="flex items-center gap-1 bg-stone-200/80 p-1 rounded-xl w-full sm:w-fit">
+        {LEVELS.map(l => {
+          const Icon = l.icon;
+          const isActive = activeLevel === l.key;
+          return (
+            <button
+              key={l.key}
+              type="button"
+              onClick={() => handleSwitchLevel(l.key)}
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                isActive ? 'bg-brand-emerald-900 text-white shadow-xs' : 'text-brand-emerald-600 hover:text-brand-emerald-900'
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              {l.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="space-y-8">
+        {/* Header Banner */}
+        <div className="bg-brand-emerald-900 text-white rounded-2xl p-6 md:p-8 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-emerald-800 text-brand-turmeric-400 text-xs font-semibold uppercase tracking-wider">
+                  <Settings className="w-3.5 h-3.5" />
+                  Teacher Control Panel
+                </div>
+                {teacherEmail && (
+                  <span className="text-xs text-brand-emerald-400 bg-brand-emerald-800/80 border border-brand-emerald-700/60 px-2.5 py-1 rounded-full flex items-center gap-1 font-medium">
+                    <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    {teacherEmail}
+                  </span>
+                )}
               </div>
-              <span className="text-xs text-brand-emerald-400 bg-brand-emerald-800/80 border border-brand-emerald-700/60 px-2.5 py-1 rounded-full flex items-center gap-1 font-medium">
-                <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
-                pgaayathri96@gmail.com
-              </span>
+              <h2 className="text-2xl font-bold">Manage {LEVELS.find(l => l.key === activeLevel)?.label} Clubs & Responses</h2>
+              <p className="text-brand-emerald-400 text-sm mt-1">
+                Configure capacities, view student sign-ups, and export records directly to Excel (.xlsx).
+              </p>
             </div>
-            <h2 className="text-2xl font-bold">Manage Clubs & Responses</h2>
-            <p className="text-brand-emerald-400 text-sm mt-1">
-              Configure capacities, view student sign-ups, and export records directly to Excel (.xlsx).
-            </p>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => exportSubmissionsToExcel(submissions, clubs)}
-              disabled={submissions.length === 0}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 disabled:opacity-50 disabled:hover:bg-emerald-500 text-brand-emerald-950 font-bold text-sm transition-colors cursor-pointer shadow-sm"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              Export to Excel (.xlsx)
-            </button>
-
-            <button
-              type="button"
-              onClick={() => exportSubmissionsToCsv(submissions)}
-              disabled={submissions.length === 0}
-              className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-brand-emerald-800 hover:bg-brand-emerald-700 text-brand-emerald-100 disabled:opacity-40 text-xs font-semibold transition-colors cursor-pointer"
-            >
-              <Download className="w-3.5 h-3.5" />
-              CSV
-            </button>
-
-            {onLogout && (
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
               <button
                 type="button"
-                onClick={onLogout}
-                className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-rose-950/70 hover:bg-rose-900 border border-rose-800/80 text-rose-200 text-xs font-semibold transition-colors cursor-pointer"
-                title="Log out from Teacher Tools"
+                onClick={() => exportSubmissionsToExcel(submissionsForLevel, clubs)}
+                disabled={submissionsForLevel.length === 0}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 disabled:opacity-50 disabled:hover:bg-emerald-500 text-brand-emerald-950 font-bold text-sm transition-colors cursor-pointer shadow-sm"
               >
-                <LogOut className="w-3.5 h-3.5 text-rose-400" />
-                Log Out
+                <FileSpreadsheet className="w-4 h-4" />
+                Export to Excel (.xlsx)
               </button>
-            )}
-          </div>
-        </div>
 
-        {/* Quick Analytics Bar */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-brand-emerald-800 text-sm">
-          <div className="bg-brand-emerald-800/60 rounded-xl p-3.5 border border-brand-emerald-800">
-            <span className="text-brand-emerald-400 text-xs block font-medium">Total Sign-Ups</span>
-            <span className="text-xl font-bold text-white mt-0.5 block">{totalSubmissionsCount}</span>
-          </div>
-
-          <div className="bg-brand-emerald-800/60 rounded-xl p-3.5 border border-brand-emerald-800">
-            <span className="text-brand-emerald-400 text-xs block font-medium">Total Spots Capacity</span>
-            <span className="text-xl font-bold text-white mt-0.5 block">{totalCapacity}</span>
-          </div>
-
-          <div className="bg-brand-emerald-800/60 rounded-xl p-3.5 border border-brand-emerald-800">
-            <span className="text-brand-emerald-400 text-xs block font-medium">Overall Fill Rate</span>
-            <span className="text-xl font-bold text-brand-turmeric-400 mt-0.5 block">{fillPercentage}%</span>
-          </div>
-
-          <div className="bg-brand-emerald-800/60 rounded-xl p-3.5 border border-brand-emerald-800">
-            <span className="text-brand-emerald-400 text-xs block font-medium">Clubs at Max Limit</span>
-            <span className="text-xl font-bold text-rose-400 mt-0.5 block">
-              {fullClubsCount} / {clubs.length}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Club Configuration Card */}
-      <div className="bg-white rounded-2xl border border-stone-200 p-6 md:p-8 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-          <div>
-            <h3 className="text-lg font-bold text-brand-emerald-900 flex items-center gap-2">
-              <Building className="w-5 h-5 text-brand-turmeric-600" />
-              Club Names & Capacity Limits
-            </h3>
-            <p className="text-brand-emerald-500 text-xs mt-0.5">
-              Adjust maximum student capacity or edit club titles without touching code.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleRestoreDefaults}
-              className="text-xs text-brand-emerald-600 hover:text-brand-emerald-900 px-3 py-1.5 rounded-lg border border-stone-200 hover:border-stone-300 font-medium transition-colors"
-            >
-              Restore Defaults
-            </button>
-            <button
-              type="button"
-              onClick={handleAddClub}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-brand-emerald-900 text-xs font-semibold transition-colors cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Add Club
-            </button>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          {editedClubs.map((club, idx) => {
-            const currentSignedUp = submissions.filter(s => s.clubId === club.id).length;
-            const isAtCap = currentSignedUp >= club.capacity;
-
-            return (
-              <div
-                key={club.id}
-                className="p-4 rounded-xl border border-stone-200 bg-stone-50/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+              <button
+                type="button"
+                onClick={() => exportSubmissionsToCsv(submissionsForLevel)}
+                disabled={submissionsForLevel.length === 0}
+                className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-brand-emerald-800 hover:bg-brand-emerald-700 text-brand-emerald-100 disabled:opacity-40 text-xs font-semibold transition-colors cursor-pointer"
               >
-                <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                  <div className="md:col-span-6">
-                    <label className="block text-[11px] font-semibold text-brand-emerald-500 uppercase mb-1">
-                      Club Name
-                    </label>
-                    <input
-                      type="text"
-                      value={club.name}
-                      onChange={e => {
-                        const next = [...editedClubs];
-                        next[idx].name = e.target.value;
-                        setEditedClubs(next);
-                      }}
-                      className="w-full px-3 py-1.5 text-sm rounded-lg border border-stone-300 bg-white font-medium text-brand-emerald-900"
-                    />
-                  </div>
+                <Download className="w-3.5 h-3.5" />
+                CSV
+              </button>
 
-                  <div className="md:col-span-3">
-                    <label className="block text-[11px] font-semibold text-brand-emerald-500 uppercase mb-1">
-                      Capacity Limit
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={club.capacity}
-                      onChange={e => {
-                        const next = [...editedClubs];
-                        next[idx].capacity = parseInt(e.target.value, 10) || 1;
-                        setEditedClubs(next);
-                      }}
-                      className="w-full px-3 py-1.5 text-sm rounded-lg border border-stone-300 bg-white font-medium text-brand-emerald-900"
-                    />
-                  </div>
-
-                  <div className="md:col-span-3 text-xs text-brand-emerald-500 pt-2 md:pt-4">
-                    <span className="font-semibold text-brand-emerald-700">{currentSignedUp}</span> of{' '}
-                    <span className="font-semibold text-brand-emerald-700">{club.capacity}</span> taken
-                    {isAtCap && (
-                      <span className="ml-2 text-rose-600 font-bold bg-rose-50 px-1.5 py-0.5 rounded">
-                        Full
-                      </span>
-                    )}
-                  </div>
-                </div>
-
+              {onLogout && (
                 <button
                   type="button"
-                  onClick={() => handleDeleteClub(club.id)}
-                  title="Remove Club"
-                  className="p-2 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors shrink-0"
+                  onClick={onLogout}
+                  className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-rose-950/70 hover:bg-rose-900 border border-rose-800/80 text-rose-200 text-xs font-semibold transition-colors cursor-pointer"
+                  title="Log out from Teacher Tools"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <LogOut className="w-3.5 h-3.5 text-rose-400" />
+                  Log Out
                 </button>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="mt-6 flex items-center justify-between gap-4">
-          <AnimatePresence>
-            {saveSuccessMsg ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="text-emerald-700 font-medium text-sm flex items-center gap-1.5"
-              >
-                <Check className="w-4 h-4" />
-                {saveSuccessMsg}
-              </motion.div>
-            ) : <div />}
-          </AnimatePresence>
-
-          <button
-            type="button"
-            onClick={handleSaveClubs}
-            disabled={isSavingClubs}
-            className="px-5 py-2.5 rounded-xl bg-brand-emerald-900 hover:bg-brand-emerald-800 text-white text-sm font-bold transition-all cursor-pointer shadow-xs"
-          >
-            {isSavingClubs ? 'Saving...' : 'Save Capacities'}
-          </button>
-        </div>
-      </div>
-
-      {/* Submissions Table Card */}
-      <div className="bg-white rounded-2xl border border-stone-200 p-6 md:p-8 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div>
-            <h3 className="text-lg font-bold text-brand-emerald-900 flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-emerald-600" />
-              Student Responses ({submissions.length})
-            </h3>
-            <p className="text-brand-emerald-500 text-xs mt-0.5">
-              Live submission log updated as students complete their sign-ups.
-            </p>
+              )}
+            </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-2.5">
-            {/* Search Input */}
-            <div className="relative w-full sm:w-48">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-brand-emerald-400" />
-              <input
-                type="text"
-                placeholder="Search student..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-stone-300 focus:outline-none focus:border-brand-emerald-800"
-              />
+          {/* Quick Analytics Bar */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-brand-emerald-800 text-sm">
+            <div className="bg-brand-emerald-800/60 rounded-xl p-3.5 border border-brand-emerald-800">
+              <span className="text-brand-emerald-400 text-xs block font-medium">Total Sign-Ups</span>
+              <span className="text-xl font-bold text-white mt-0.5 block">{totalSubmissionsCount}</span>
             </div>
 
-            {/* Filter Dropdown */}
-            <select
-              value={selectedClubFilter}
-              onChange={e => setSelectedClubFilter(e.target.value)}
-              className="w-full sm:w-auto px-3 py-1.5 text-xs rounded-xl border border-stone-300 bg-white font-medium text-brand-emerald-700"
-            >
-              <option value="ALL">All Clubs</option>
-              {clubs.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            <div className="bg-brand-emerald-800/60 rounded-xl p-3.5 border border-brand-emerald-800">
+              <span className="text-brand-emerald-400 text-xs block font-medium">Total Spots Capacity</span>
+              <span className="text-xl font-bold text-white mt-0.5 block">{totalCapacity}</span>
+            </div>
+
+            <div className="bg-brand-emerald-800/60 rounded-xl p-3.5 border border-brand-emerald-800">
+              <span className="text-brand-emerald-400 text-xs block font-medium">Overall Fill Rate</span>
+              <span className="text-xl font-bold text-brand-turmeric-400 mt-0.5 block">{fillPercentage}%</span>
+            </div>
+
+            <div className="bg-brand-emerald-800/60 rounded-xl p-3.5 border border-brand-emerald-800">
+              <span className="text-brand-emerald-400 text-xs block font-medium">Clubs at Max Limit</span>
+              <span className="text-xl font-bold text-rose-400 mt-0.5 block">
+                {fullClubsCount} / {clubs.length}
+              </span>
+            </div>
           </div>
         </div>
 
-        {filteredSubmissions.length === 0 ? (
-          <div className="text-center py-12 border-2 border-dashed border-stone-200 rounded-xl">
-            <Users className="w-8 h-8 text-stone-300 mx-auto mb-2" />
-            <p className="text-brand-emerald-500 text-sm font-medium">No student sign-ups recorded yet.</p>
-            <p className="text-brand-emerald-400 text-xs mt-1">
-              Submissions will appear here automatically when students fill out the form.
-            </p>
+        {/* Club Configuration Card */}
+        <div className="bg-white rounded-2xl border border-stone-200 p-6 md:p-8 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+            <div>
+              <h3 className="text-lg font-bold text-brand-emerald-900 flex items-center gap-2">
+                <Building className="w-5 h-5 text-brand-turmeric-600" />
+                Club Names & Capacity Limits
+              </h3>
+              <p className="text-brand-emerald-500 text-xs mt-0.5">
+                Adjust maximum student capacity or edit club titles without touching code.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleRestoreDefaults}
+                className="text-xs text-brand-emerald-600 hover:text-brand-emerald-900 px-3 py-1.5 rounded-lg border border-stone-200 hover:border-stone-300 font-medium transition-colors"
+              >
+                Restore Defaults
+              </button>
+              <button
+                type="button"
+                onClick={handleAddClub}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-brand-emerald-900 text-xs font-semibold transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Club
+              </button>
+            </div>
           </div>
-        ) : (
-          <div className="overflow-x-auto rounded-xl border border-stone-200">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-stone-100/80 text-brand-emerald-600 font-semibold uppercase tracking-wider border-b border-stone-200">
-                <tr>
-                  <th className="p-3">#</th>
-                  <th className="p-3">First Name</th>
-                  <th className="p-3">Last Name</th>
-                  <th className="p-3">Class</th>
-                  <th className="p-3">Club Selected</th>
-                  <th className="p-3">Submitted At</th>
-                  <th className="p-3 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100 text-brand-emerald-800">
-                {filteredSubmissions.map((sub, index) => (
-                  <tr key={sub.id || index} className="hover:bg-stone-50/80 transition-colors">
-                    <td className="p-3 font-mono text-brand-emerald-400">{index + 1}</td>
-                    <td className="p-3 font-bold text-brand-emerald-900">{sub.firstName}</td>
-                    <td className="p-3 font-bold text-brand-emerald-900">{sub.lastName}</td>
-                    <td className="p-3 font-medium text-brand-emerald-700">{sub.class}</td>
-                    <td className="p-3">
-                      <span className="inline-block bg-brand-turmeric-50 text-brand-turmeric-700 border border-brand-turmeric-100 px-2.5 py-0.5 rounded-md font-semibold">
-                        {sub.clubName}
-                      </span>
-                    </td>
-                    <td className="p-3 text-brand-emerald-500">
-                      {sub.ts ? new Date(sub.ts).toLocaleString() : 'N/A'}
-                    </td>
-                    <td className="p-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteSingleSubmission(sub.id, `${sub.firstName} ${sub.lastName}`)}
-                        title="Remove student submission"
-                        className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
-                  </tr>
+
+          <div className="space-y-3">
+            {editedClubs.map((club, idx) => {
+              const currentSignedUp = allSubmissions.filter(s => s.clubId === club.id).length;
+              const isAtCap = currentSignedUp >= club.capacity;
+
+              return (
+                <div
+                  key={club.id}
+                  className="p-4 rounded-xl border border-stone-200 bg-stone-50/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                >
+                  <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                    <div className="md:col-span-6">
+                      <label className="block text-[11px] font-semibold text-brand-emerald-500 uppercase mb-1">
+                        Club Name
+                      </label>
+                      <input
+                        type="text"
+                        value={club.name}
+                        onChange={e => {
+                          const next = [...editedClubs];
+                          next[idx].name = e.target.value;
+                          setEditedClubs(next);
+                        }}
+                        className="w-full px-3 py-1.5 text-sm rounded-lg border border-stone-300 bg-white font-medium text-brand-emerald-900"
+                      />
+                    </div>
+
+                    <div className="md:col-span-3">
+                      <label className="block text-[11px] font-semibold text-brand-emerald-500 uppercase mb-1">
+                        Capacity Limit
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={club.capacity}
+                        onChange={e => {
+                          const next = [...editedClubs];
+                          next[idx].capacity = parseInt(e.target.value, 10) || 1;
+                          setEditedClubs(next);
+                        }}
+                        className="w-full px-3 py-1.5 text-sm rounded-lg border border-stone-300 bg-white font-medium text-brand-emerald-900"
+                      />
+                    </div>
+
+                    <div className="md:col-span-3 text-xs text-brand-emerald-500 pt-2 md:pt-4">
+                      <span className="font-semibold text-brand-emerald-700">{currentSignedUp}</span> of{' '}
+                      <span className="font-semibold text-brand-emerald-700">{club.capacity}</span> taken
+                      {isAtCap && (
+                        <span className="ml-2 text-rose-600 font-bold bg-rose-50 px-1.5 py-0.5 rounded">
+                          Full
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteClub(club.id)}
+                    title="Remove Club"
+                    className="p-2 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors shrink-0"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-6 flex items-center justify-between gap-4">
+            <AnimatePresence>
+              {saveSuccessMsg ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="text-emerald-700 font-medium text-sm flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  {saveSuccessMsg}
+                </motion.div>
+              ) : <div />}
+            </AnimatePresence>
+
+            <button
+              type="button"
+              onClick={handleSaveClubs}
+              disabled={isSavingClubs}
+              className="px-5 py-2.5 rounded-xl bg-brand-emerald-900 hover:bg-brand-emerald-800 text-white text-sm font-bold transition-all cursor-pointer shadow-xs"
+            >
+              {isSavingClubs ? 'Saving...' : 'Save Capacities'}
+            </button>
+          </div>
+        </div>
+
+        {/* Submissions Table Card */}
+        <div className="bg-white rounded-2xl border border-stone-200 p-6 md:p-8 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <h3 className="text-lg font-bold text-brand-emerald-900 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-emerald-600" />
+                Student Responses ({submissionsForLevel.length})
+              </h3>
+              <p className="text-brand-emerald-500 text-xs mt-0.5">
+                Live submission log updated as students complete their sign-ups.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-2.5">
+              {/* Search Input */}
+              <div className="relative w-full sm:w-48">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-brand-emerald-400" />
+                <input
+                  type="text"
+                  placeholder="Search student..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-stone-300 focus:outline-none focus:border-brand-emerald-800"
+                />
+              </div>
+
+              {/* Filter Dropdown */}
+              <select
+                value={selectedClubFilter}
+                onChange={e => setSelectedClubFilter(e.target.value)}
+                className="w-full sm:w-auto px-3 py-1.5 text-xs rounded-xl border border-stone-300 bg-white font-medium text-brand-emerald-700"
+              >
+                <option value="ALL">All Clubs</option>
+                {clubs.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Bottom Actions */}
-        <div className="mt-6 pt-6 border-t border-stone-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="text-xs text-brand-emerald-500">
-            Showing <span className="font-bold text-brand-emerald-800">{filteredSubmissions.length}</span> of{' '}
-            <span className="font-bold text-brand-emerald-800">{submissions.length}</span> total entries
+              </select>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
-            <button
-              type="button"
-              onClick={() => exportSubmissionsToExcel(submissions, clubs)}
-              disabled={submissions.length === 0}
-              className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold text-brand-emerald-950 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              Export to Excel (.xlsx)
-            </button>
+          {filteredSubmissions.length === 0 ? (
+            <div className="text-center py-12 border-2 border-dashed border-stone-200 rounded-xl">
+              <Users className="w-8 h-8 text-stone-300 mx-auto mb-2" />
+              <p className="text-brand-emerald-500 text-sm font-medium">No student sign-ups recorded yet.</p>
+              <p className="text-brand-emerald-400 text-xs mt-1">
+                Submissions will appear here automatically when students fill out the form.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-stone-200">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-stone-100/80 text-brand-emerald-600 font-semibold uppercase tracking-wider border-b border-stone-200">
+                  <tr>
+                    <th className="p-3">#</th>
+                    <th className="p-3">First Name</th>
+                    <th className="p-3">Last Name</th>
+                    <th className="p-3">Class</th>
+                    <th className="p-3">Club Selected</th>
+                    <th className="p-3">Submitted At</th>
+                    <th className="p-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100 text-brand-emerald-800">
+                  {filteredSubmissions.map((sub, index) => (
+                    <tr key={sub.id || index} className="hover:bg-stone-50/80 transition-colors">
+                      <td className="p-3 font-mono text-brand-emerald-400">{index + 1}</td>
+                      <td className="p-3 font-bold text-brand-emerald-900">{sub.firstName}</td>
+                      <td className="p-3 font-bold text-brand-emerald-900">{sub.lastName}</td>
+                      <td className="p-3 font-medium text-brand-emerald-700">{sub.class}</td>
+                      <td className="p-3">
+                        <span className="inline-block bg-brand-turmeric-50 text-brand-turmeric-700 border border-brand-turmeric-100 px-2.5 py-0.5 rounded-md font-semibold">
+                          {sub.clubName}
+                        </span>
+                      </td>
+                      <td className="p-3 text-brand-emerald-500">
+                        {sub.ts ? new Date(sub.ts).toLocaleString() : 'N/A'}
+                      </td>
+                      <td className="p-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSingleSubmission(sub.id, `${sub.firstName} ${sub.lastName}`)}
+                          title="Remove student submission"
+                          className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-            <button
-              type="button"
-              onClick={() => setShowResetModalStep1(true)}
-              disabled={submissions.length === 0}
-              className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 disabled:opacity-40 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              Reset All Submissions
-            </button>
+          {/* Bottom Actions */}
+          <div className="mt-6 pt-6 border-t border-stone-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-xs text-brand-emerald-500">
+              Showing <span className="font-bold text-brand-emerald-800">{filteredSubmissions.length}</span> of{' '}
+              <span className="font-bold text-brand-emerald-800">{submissionsForLevel.length}</span> total entries
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => exportSubmissionsToExcel(submissionsForLevel, clubs)}
+                disabled={submissionsForLevel.length === 0}
+                className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold text-brand-emerald-950 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                Export to Excel (.xlsx)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowResetModalStep1(true)}
+                disabled={submissionsForLevel.length === 0}
+                className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 disabled:opacity-40 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Reset All Submissions
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -503,10 +586,12 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({
           >
             <div className="flex items-center gap-3 text-rose-600 mb-3">
               <AlertTriangle className="w-6 h-6" />
-              <h3 className="text-lg font-bold text-brand-emerald-900">Reset All Submissions?</h3>
+              <h3 className="text-lg font-bold text-brand-emerald-900">
+                Reset All {LEVELS.find(l => l.key === activeLevel)?.label} Submissions?
+              </h3>
             </div>
             <p className="text-brand-emerald-600 text-sm mb-6 leading-relaxed">
-              This action will permanently delete all <strong className="text-brand-emerald-900">{submissions.length}</strong> student sign-up records. Your club names and capacity limits will remain saved.
+              This action will permanently delete all <strong className="text-brand-emerald-900">{submissionsForLevel.length}</strong> {LEVELS.find(l => l.key === activeLevel)?.label} student sign-up records. The other section's records and your club names/capacity limits will remain untouched.
             </p>
             <div className="flex items-center justify-end gap-3">
               <button

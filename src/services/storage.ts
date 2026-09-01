@@ -1,24 +1,37 @@
-import { Club, Submission, DEFAULT_CLUBS } from '../types';
+import { Club, Submission, SchoolLevel, defaultClubsFor } from '../types';
 import { supabase } from './supabaseClient';
 import * as XLSX from 'xlsx';
 
-export async function loadClubsConfig(): Promise<Club[]> {
+export async function loadClubsConfig(level: SchoolLevel): Promise<Club[]> {
   const { data, error } = await supabase
     .from('clubs')
-    .select('id, name, capacity, description')
+    .select('id, name, capacity, description, school_level')
+    .eq('school_level', level)
     .order('created_at', { ascending: true });
 
   if (error) {
     console.error('loadClubsConfig error:', error);
-    return DEFAULT_CLUBS;
+    return defaultClubsFor(level);
   }
-  return data && data.length > 0 ? data : DEFAULT_CLUBS;
+  if (!data || data.length === 0) return defaultClubsFor(level);
+
+  return data.map(row => ({
+    id: row.id,
+    name: row.name,
+    capacity: row.capacity,
+    description: row.description ?? undefined,
+    schoolLevel: row.school_level
+  }));
 }
 
-// Upserts the given clubs and deletes any club rows that are no longer present.
-export async function saveClubsConfig(clubs: Club[]): Promise<boolean> {
+// Upserts the given clubs and deletes any club rows for that school level
+// that are no longer present. Never touches the other level's clubs.
+export async function saveClubsConfig(level: SchoolLevel, clubs: Club[]): Promise<boolean> {
   try {
-    const { data: existing, error: fetchErr } = await supabase.from('clubs').select('id');
+    const { data: existing, error: fetchErr } = await supabase
+      .from('clubs')
+      .select('id')
+      .eq('school_level', level);
     if (fetchErr) throw fetchErr;
 
     const keepIds = new Set(clubs.map(c => c.id));
@@ -34,7 +47,8 @@ export async function saveClubsConfig(clubs: Club[]): Promise<boolean> {
         id: c.id,
         name: c.name,
         capacity: c.capacity,
-        description: c.description ?? null
+        description: c.description ?? null,
+        school_level: level
       }))
     );
     if (upsertErr) throw upsertErr;
@@ -46,12 +60,13 @@ export async function saveClubsConfig(clubs: Club[]): Promise<boolean> {
   }
 }
 
-// Full submission list. RLS only allows this for authenticated teachers;
-// anonymous callers simply get an empty array back.
+// Full submission list across BOTH school levels. RLS only allows this for
+// authenticated teachers; anonymous callers simply get an empty array back.
+// The teacher dashboard filters by level client-side.
 export async function loadSubmissions(): Promise<Submission[]> {
   const { data, error } = await supabase
     .from('submissions')
-    .select('id, first_name, last_name, class, club_id, club_name, ts')
+    .select('id, school_level, first_name, last_name, class, club_id, club_name, ts')
     .order('ts', { ascending: true });
 
   if (error) {
@@ -61,6 +76,7 @@ export async function loadSubmissions(): Promise<Submission[]> {
 
   return (data ?? []).map(row => ({
     id: row.id,
+    schoolLevel: row.school_level,
     firstName: row.first_name,
     lastName: row.last_name,
     class: row.class,
@@ -71,6 +87,8 @@ export async function loadSubmissions(): Promise<Submission[]> {
 }
 
 // Public, privacy-safe seat counts per club (no student names exposed).
+// Keyed by club_id, which already implies a school level, so both levels'
+// counts can be fetched together safely.
 export async function loadClubSeatCounts(): Promise<Record<string, number>> {
   const { data, error } = await supabase.from('club_seat_counts').select('club_id, taken');
   if (error) {
@@ -89,6 +107,7 @@ export type SignupResult =
   | { ok: false; reason: 'duplicate' | 'full' | 'error'; message: string };
 
 export async function submitSignup(input: {
+  schoolLevel: SchoolLevel;
   firstName: string;
   lastName: string;
   studentClass: string;
@@ -98,6 +117,7 @@ export async function submitSignup(input: {
   const fullName = `${input.firstName} ${input.lastName}`;
 
   const { data: alreadyTaken, error: checkErr } = await supabase.rpc('check_name_taken', {
+    p_school_level: input.schoolLevel,
     p_first_name: input.firstName,
     p_last_name: input.lastName
   });
@@ -114,6 +134,7 @@ export async function submitSignup(input: {
   // fail to read the row back and roll the whole insert back. This RPC does
   // the insert server-side and returns the row directly, sidestepping that.
   const { data, error } = await supabase.rpc('submit_signup', {
+    p_school_level: input.schoolLevel,
     p_first_name: input.firstName,
     p_last_name: input.lastName,
     p_class: input.studentClass,
@@ -146,6 +167,7 @@ export async function submitSignup(input: {
     ok: true,
     submission: {
       id: row.id,
+      schoolLevel: row.school_level,
       firstName: row.first_name,
       lastName: row.last_name,
       class: row.class,
@@ -165,8 +187,8 @@ export async function deleteSubmission(id: string): Promise<boolean> {
   return true;
 }
 
-export async function deleteAllSubmissions(): Promise<boolean> {
-  const { error } = await supabase.from('submissions').delete().not('id', 'is', null);
+export async function deleteAllSubmissions(level: SchoolLevel): Promise<boolean> {
+  const { error } = await supabase.from('submissions').delete().eq('school_level', level);
   if (error) {
     console.error('deleteAllSubmissions error:', error);
     return false;

@@ -1,16 +1,21 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Club, Submission } from './types';
-import { loadClubsConfig, loadClubSeatCounts, loadSubmissions } from './services/storage';
+import { Club, SchoolLevel } from './types';
+import { loadClubsConfig, loadClubSeatCounts } from './services/storage';
 import { getTeacherSession, onTeacherAuthStateChange, signOutTeacher } from './services/auth';
 import { StudentForm } from './components/StudentForm';
 import { TeacherTools } from './components/TeacherTools';
 import { TeacherLoginModal } from './components/TeacherLoginModal';
-import { GraduationCap, ShieldCheck, UserCheck, Sparkles, RefreshCw } from 'lucide-react';
+import { GraduationCap, ShieldCheck, UserCheck, Sparkles, RefreshCw, Backpack, School } from 'lucide-react';
+
+function readSchoolLevelFromUrl(): SchoolLevel | null {
+  const value = new URLSearchParams(window.location.search).get('school');
+  return value === 'primary' || value === 'secondary' ? value : null;
+}
 
 export default function App() {
+  const [schoolLevel, setSchoolLevel] = useState<SchoolLevel | null>(() => readSchoolLevelFromUrl());
   const [clubs, setClubs] = useState<Club[]>([]);
   const [seatCounts, setSeatCounts] = useState<Record<string, number>>({});
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState<'STUDENT' | 'TEACHER'>('STUDENT');
   const [isTeacherAuthenticated, setIsTeacherAuthenticated] = useState(false);
@@ -19,7 +24,6 @@ export default function App() {
   const [teacherAccessRevealed, setTeacherAccessRevealed] = useState(false);
   const showTeacherAccess = teacherAccessRevealed || isTeacherAuthenticated;
 
-  // Handle Teacher View Click
   const handleTeacherViewClick = () => {
     setActiveView('TEACHER');
   };
@@ -35,18 +39,22 @@ export default function App() {
     setActiveView('STUDENT');
   };
 
-  // Public data (club list + live seat counts) - safe for anonymous students
+  const chooseSchoolLevel = (level: SchoolLevel) => {
+    setSchoolLevel(level);
+    // Make the choice a real, shareable/bookmarkable/refreshable link from here on.
+    const url = new URL(window.location.href);
+    url.searchParams.set('school', level);
+    window.history.replaceState({}, '', url);
+  };
+
+  // Public data (club list + live seat counts) for the currently chosen
+  // school level - safe for anonymous students.
   const refreshPublicData = useCallback(async () => {
-    const [loadedClubs, loadedCounts] = await Promise.all([loadClubsConfig(), loadClubSeatCounts()]);
+    if (!schoolLevel) return;
+    const [loadedClubs, loadedCounts] = await Promise.all([loadClubsConfig(schoolLevel), loadClubSeatCounts()]);
     setClubs(loadedClubs);
     setSeatCounts(loadedCounts);
-  }, []);
-
-  // Full submission list - only ever returns rows when logged in as a teacher (enforced by RLS)
-  const refreshTeacherData = useCallback(async () => {
-    const loadedSubmissions = await loadSubmissions();
-    setSubmissions(loadedSubmissions);
-  }, []);
+  }, [schoolLevel]);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).has('teacher')) {
@@ -78,11 +86,7 @@ export default function App() {
     };
   }, [refreshPublicData]);
 
-  useEffect(() => {
-    if (isTeacherAuthenticated && activeView === 'TEACHER') {
-      refreshTeacherData();
-    }
-  }, [isTeacherAuthenticated, activeView, refreshTeacherData]);
+  const levelLabel = schoolLevel === 'primary' ? 'Primary School' : schoolLevel === 'secondary' ? 'Secondary School' : null;
 
   return (
     <div className="min-h-screen bg-brand-cream text-brand-emerald-900 font-sans antialiased selection:bg-brand-turmeric-200 selection:text-brand-emerald-900">
@@ -111,7 +115,7 @@ export default function App() {
             <div>
               <div className="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-widest text-brand-turmeric-600 mb-1">
                 <GraduationCap className="w-4 h-4" />
-                Cocurricular Sign-Up
+                Cocurricular Sign-Up{levelLabel && activeView === 'STUDENT' ? ` — ${levelLabel}` : ''}
               </div>
               <h1 className="text-3xl md:text-4xl font-extrabold text-brand-emerald-950 tracking-tight">
                 {activeView === 'STUDENT' ? 'Choose Your Club' : 'Teacher Dashboard'}
@@ -156,32 +160,24 @@ export default function App() {
         </header>
 
         {/* Content Body */}
-        {isLoading ? (
+        {activeView === 'TEACHER' ? (
+          !isTeacherAuthenticated ? (
+            <TeacherLoginModal
+              onLoginSuccess={handleTeacherLoginSuccess}
+              onCancel={() => setActiveView('STUDENT')}
+            />
+          ) : (
+            <TeacherTools onLogout={handleTeacherLogout} />
+          )
+        ) : !schoolLevel ? (
+          <SchoolLevelChooser onChoose={chooseSchoolLevel} />
+        ) : isLoading ? (
           <div className="bg-white rounded-2xl border border-stone-200 p-12 text-center my-8 shadow-xs">
             <RefreshCw className="w-8 h-8 text-brand-emerald-400 animate-spin mx-auto mb-3" />
             <p className="text-brand-emerald-600 font-medium text-sm">Loading clubs and live seating...</p>
           </div>
-        ) : activeView === 'STUDENT' ? (
-          <StudentForm clubs={clubs} seatCounts={seatCounts} onSubmitted={refreshPublicData} />
-        ) : !isTeacherAuthenticated ? (
-          <TeacherLoginModal
-            onLoginSuccess={handleTeacherLoginSuccess}
-            onCancel={() => setActiveView('STUDENT')}
-          />
         ) : (
-          <TeacherTools
-            clubs={clubs}
-            submissions={submissions}
-            onClubsUpdated={updated => {
-              setClubs(updated);
-              refreshPublicData();
-            }}
-            onSubmissionsUpdated={() => {
-              refreshTeacherData();
-              refreshPublicData();
-            }}
-            onLogout={handleTeacherLogout}
-          />
+          <StudentForm clubs={clubs} seatCounts={seatCounts} schoolLevel={schoolLevel} onSubmitted={refreshPublicData} />
         )}
 
         {/* Bottom Footer - the teacher toggle link only appears once teacher access is revealed */}
@@ -207,6 +203,34 @@ export default function App() {
           </p>
         </footer>
       </main>
+    </div>
+  );
+}
+
+function SchoolLevelChooser({ onChoose }: { onChoose: (level: SchoolLevel) => void }) {
+  return (
+    <div className="bg-white rounded-2xl border border-stone-200 p-6 sm:p-8 shadow-xs max-w-lg mx-auto text-center">
+      <h2 className="text-xl font-bold text-brand-emerald-900">Which school section are you in?</h2>
+      <p className="text-brand-emerald-500 text-sm mt-1 mb-6">Pick one to see the right club list for you.</p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={() => onChoose('primary')}
+          className="flex flex-col items-center gap-2.5 p-6 rounded-xl border-2 border-stone-200 bg-white hover:border-brand-emerald-900 hover:bg-brand-emerald-50/40 transition-all cursor-pointer"
+        >
+          <Backpack className="w-9 h-9 text-brand-emerald-700" />
+          <span className="font-bold text-brand-emerald-900">Primary School</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onChoose('secondary')}
+          className="flex flex-col items-center gap-2.5 p-6 rounded-xl border-2 border-stone-200 bg-white hover:border-brand-emerald-900 hover:bg-brand-emerald-50/40 transition-all cursor-pointer"
+        >
+          <School className="w-9 h-9 text-brand-emerald-700" />
+          <span className="font-bold text-brand-emerald-900">Secondary School</span>
+        </button>
+      </div>
     </div>
   );
 }
