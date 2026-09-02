@@ -44,7 +44,7 @@ if (!rawUrl || !rawKey) {
 } else if (!looksLikeValidUrl) {
   renderConfigError(
     'Configuration error',
-    'VITE_SUPABASE_URL is set but does not look like a valid URL (it should be a full URL like https://xxxx.supabase.co or your self-hosted Supabase URL, with no quotes or extra spaces around it). Fix the value in your hosting provider's dashboard, then trigger a new deploy.'
+    "VITE_SUPABASE_URL is set but does not look like a valid URL (it should be a full URL like https://xxxx.supabase.co or your self-hosted Supabase URL, with no quotes or extra spaces around it). Fix the value in your hosting provider's dashboard, then trigger a new deploy."
   );
 } else {
   import('./App.tsx')
