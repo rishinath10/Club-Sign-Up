@@ -1,3 +1,29 @@
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+/* ── In-page links ───────────────────────────────────────────
+   Scroll to the section without leaving a #fragment behind in
+   the address bar. The href stays as the no-JS fallback.      */
+
+document.querySelectorAll('a[href^="#"]').forEach((link) => {
+  link.addEventListener("click", (event) => {
+    const id = link.getAttribute("href").slice(1);
+    const target = id && document.getElementById(id);
+    if (!target) return; // anything unexpected, let the browser deal with it
+
+    event.preventDefault();
+    const behavior = reducedMotion.matches ? "auto" : "smooth";
+
+    if (id === "top") {
+      window.scrollTo({ top: 0, behavior });
+    } else {
+      target.scrollIntoView({ behavior, block: "start" });
+      // Keyboard users should land in the section, not back at the top of the tab order.
+      target.setAttribute("tabindex", "-1");
+      target.focus({ preventScroll: true });
+    }
+  });
+});
+
 /* ── Reveals ─────────────────────────────────────────────────
    Everything is visible by default. The `js` class on <html> is
    what hides it, so a failed script or a browser without

@@ -36,6 +36,10 @@ body {
 img { display: block; max-width: 100%; }
 p { margin: 0; }
 
+/* Sections take focus when scrolled to so keyboard users keep
+   their place, but shouldn't show a ring for it. */
+section:focus, main:focus { outline: none; }
+
 .leaf {
   width: 100%;
   max-width: 1060px;
