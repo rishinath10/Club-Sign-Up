@@ -1,0 +1,9 @@
+# This site must not appear in search results - it collects student names.
+#
+# Crawling is allowed on purpose. The actual instruction not to index is the
+# noindex meta tag in index.html and the X-Robots-Tag header from nginx.conf,
+# and a crawler blocked here would never see either - which would leave the
+# URL eligible to stay indexed as a bare link.
+
+User-agent: *
+Allow: /

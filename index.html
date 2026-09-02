@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" href="stars-crest.png" />
     <meta name="theme-color" content="#0f3a2a" />
+    <!-- Sign-up forms carry student names and must never surface in search
+         results. Paired with an X-Robots-Tag header in nginx.conf. robots.txt
+         deliberately allows crawling: a crawler blocked there can't read this
+         tag, and the URL can stay indexed regardless. -->
+    <meta name="robots" content="noindex, nofollow, noarchive" />
     <title>Stars International Club Sign Up Form</title>
   </head>
   <body>

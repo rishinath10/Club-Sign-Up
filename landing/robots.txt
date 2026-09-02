@@ -1,0 +1,7 @@
+# hubiform.com is the public face of the product and should be indexed.
+# The sign-up apps on other subdomains are excluded at their own origin,
+# via a noindex meta tag and X-Robots-Tag header rather than from here -
+# robots.txt only applies to the host that serves it.
+
+User-agent: *
+Allow: /
