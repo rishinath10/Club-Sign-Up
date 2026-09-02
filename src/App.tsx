@@ -8,6 +8,9 @@ import { TeacherLoginModal } from './components/TeacherLoginModal';
 import { GraduationCap, ShieldCheck, UserCheck, Sparkles, RefreshCw, Backpack, School } from 'lucide-react';
 
 function readSchoolLevelFromUrl(): SchoolLevel | null {
+  const path = window.location.pathname.replace(/^\/|\/$/g, '').toLowerCase();
+  if (path === 'primary' || path === 'secondary') return path;
+  // Older ?school=primary links stay working alongside the clean /primary path.
   const value = new URLSearchParams(window.location.search).get('school');
   return value === 'primary' || value === 'secondary' ? value : null;
 }
@@ -43,7 +46,8 @@ export default function App() {
     setSchoolLevel(level);
     // Make the choice a real, shareable/bookmarkable/refreshable link from here on.
     const url = new URL(window.location.href);
-    url.searchParams.set('school', level);
+    url.pathname = `/${level}`;
+    url.search = '';
     window.history.replaceState({}, '', url);
   };
 
@@ -57,7 +61,9 @@ export default function App() {
   }, [schoolLevel]);
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).has('teacher')) {
+    const path = window.location.pathname.replace(/^\/|\/$/g, '').toLowerCase();
+    // Older ?teacher links stay working alongside the clean /teacher path.
+    if (path === 'teacher' || new URLSearchParams(window.location.search).has('teacher')) {
       setTeacherAccessRevealed(true);
     }
   }, []);
