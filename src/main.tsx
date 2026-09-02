@@ -30,7 +30,7 @@ const looksLikeValidUrl = (() => {
   if (!rawUrl) return false;
   try {
     const u = new URL(rawUrl);
-    return u.protocol === 'https:' && u.hostname.endsWith('.supabase.co');
+    return (u.protocol === 'https:' || u.protocol === 'http:') && u.hostname.length > 0;
   } catch {
     return false;
   }
@@ -44,7 +44,7 @@ if (!rawUrl || !rawKey) {
 } else if (!looksLikeValidUrl) {
   renderConfigError(
     'Configuration error',
-    'VITE_SUPABASE_URL is set but does not look like a valid Supabase project URL (it should look like https://xxxx.supabase.co with no quotes or extra spaces around it). Fix the value in your hosting provider’s dashboard, then trigger a new deploy.'
+    'VITE_SUPABASE_URL is set but does not look like a valid URL (it should be a full URL like https://xxxx.supabase.co or your self-hosted Supabase URL, with no quotes or extra spaces around it). Fix the value in your hosting provider's dashboard, then trigger a new deploy.'
   );
 } else {
   import('./App.tsx')
