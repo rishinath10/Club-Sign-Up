@@ -26,7 +26,7 @@ html { scroll-behavior: smooth; }
 
 body {
   margin: 0;
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: 'Jost', -apple-system, sans-serif;
   color: var(--ink);
   background: var(--paper);
   -webkit-font-smoothing: antialiased;
@@ -53,7 +53,7 @@ body {
 
 /* -------- Typography -------- */
 h1, h2, h3, .brand-word {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'EB Garamond', Georgia, serif;
   margin: 0;
   line-height: 1.15;
   color: var(--ink);
@@ -69,7 +69,7 @@ em { font-style: italic; color: var(--maroon-600); }
   font-weight: 600;
 }
 .eyebrow {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Jost', sans-serif;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -90,7 +90,7 @@ em { font-style: italic; color: var(--maroon-600); }
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Jost', sans-serif;
   font-weight: 600;
   font-size: 0.98rem;
   text-decoration: none;
@@ -234,7 +234,7 @@ em { font-style: italic; color: var(--maroon-600); }
 }
 .dash-brand {
   display: flex; align-items: center; gap: 8px;
-  font-family: 'Playfair Display', serif;
+  font-family: 'EB Garamond', serif;
   font-weight: 600; font-size: 0.95rem;
   color: #fff;
   margin-bottom: 22px;
@@ -250,7 +250,7 @@ em { font-style: italic; color: var(--maroon-600); }
 }
 .dash-nav-item.active { background: rgba(255,255,255,0.1); color: #fff; }
 .dash-main { padding: 22px 24px; }
-.dash-main h4 { font-family: 'Playfair Display', serif; font-size: 1.15rem; margin: 0 0 16px; }
+.dash-main h4 { font-family: 'EB Garamond', serif; font-size: 1.15rem; margin: 0 0 16px; }
 .dash-cards { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 18px; }
 .dash-card {
   background: var(--paper);
@@ -305,7 +305,7 @@ em { font-style: italic; color: var(--maroon-600); }
 }
 .field input, .field textarea {
   width: 100%;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Jost', sans-serif;
   font-size: 0.98rem;
   padding: 11px 13px;
   border: 1px solid var(--paper-line);
