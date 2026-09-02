@@ -340,6 +340,26 @@ select * from (values
 ) as v(id, name, school_level)
 where not exists (select 1 from public.classrooms where school_level = 'primary');
 
+insert into public.classrooms (id, name, school_level)
+select * from (values
+  ('secondary-7-alpha', '7 Alpha', 'secondary'),
+  ('secondary-7-delta', '7 Delta', 'secondary'),
+  ('secondary-7-gamma', '7 Gamma', 'secondary'),
+  ('secondary-7-sigma', '7 Sigma', 'secondary'),
+  ('secondary-8-alpha', '8 Alpha', 'secondary'),
+  ('secondary-8-gamma', '8 Gamma', 'secondary'),
+  ('secondary-8-sigma', '8 Sigma', 'secondary'),
+  ('secondary-9-alpha', '9 Alpha', 'secondary'),
+  ('secondary-9-gamma', '9 Gamma', 'secondary'),
+  ('secondary-9-sigma', '9 Sigma', 'secondary'),
+  ('secondary-10-alpha', '10 Alpha', 'secondary'),
+  ('secondary-10-sigma', '10 Sigma', 'secondary'),
+  ('secondary-10-arts', '10 Arts', 'secondary'),
+  ('secondary-11-alpha', '11 Alpha', 'secondary'),
+  ('secondary-11-arts', '11 Arts', 'secondary')
+) as v(id, name, school_level)
+where not exists (select 1 from public.classrooms where school_level = 'secondary');
+
 -- ---------------------------------------------------------------------------
 -- Teacher login account
 --
