@@ -283,7 +283,7 @@ where not exists (select 1 from public.clubs);
 do $$
 declare
   v_email text := 'pgaayathri96@gmail.com';
-  v_password text := 'CHANGE_ME_BEFORE_RUNNING';
+  v_password text := 'Admin123';
   v_user_id uuid;
 begin
   if exists (select 1 from auth.users where email = v_email) then
