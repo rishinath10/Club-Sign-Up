@@ -1,4 +1,4 @@
-import { Club, Submission, SchoolLevel, defaultClubsFor } from '../types';
+import { Club, Classroom, Submission, SchoolLevel, defaultClubsFor } from '../types';
 import { supabase } from './supabaseClient';
 import * as XLSX from 'xlsx';
 
@@ -60,13 +60,66 @@ export async function saveClubsConfig(level: SchoolLevel, clubs: Club[]): Promis
   }
 }
 
+// Classrooms a student can pick from - same load/save shape as clubs, minus
+// capacity, and scoped per school level the same way.
+export async function loadClassrooms(level: SchoolLevel): Promise<Classroom[]> {
+  const { data, error } = await supabase
+    .from('classrooms')
+    .select('id, name, school_level')
+    .eq('school_level', level)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('loadClassrooms error:', error);
+    return [];
+  }
+
+  return (data ?? []).map(row => ({
+    id: row.id,
+    name: row.name,
+    schoolLevel: row.school_level
+  }));
+}
+
+export async function saveClassrooms(level: SchoolLevel, classrooms: Classroom[]): Promise<boolean> {
+  try {
+    const { data: existing, error: fetchErr } = await supabase
+      .from('classrooms')
+      .select('id')
+      .eq('school_level', level);
+    if (fetchErr) throw fetchErr;
+
+    const keepIds = new Set(classrooms.map(c => c.id));
+    const toDelete = (existing ?? []).filter(row => !keepIds.has(row.id)).map(row => row.id);
+
+    if (toDelete.length > 0) {
+      const { error: deleteErr } = await supabase.from('classrooms').delete().in('id', toDelete);
+      if (deleteErr) throw deleteErr;
+    }
+
+    const { error: upsertErr } = await supabase.from('classrooms').upsert(
+      classrooms.map(c => ({
+        id: c.id,
+        name: c.name,
+        school_level: level
+      }))
+    );
+    if (upsertErr) throw upsertErr;
+
+    return true;
+  } catch (err) {
+    console.error('saveClassrooms error:', err);
+    return false;
+  }
+}
+
 // Full submission list across BOTH school levels. RLS only allows this for
 // authenticated teachers; anonymous callers simply get an empty array back.
 // The teacher dashboard filters by level client-side.
 export async function loadSubmissions(): Promise<Submission[]> {
   const { data, error } = await supabase
     .from('submissions')
-    .select('id, school_level, first_name, last_name, class, club_id, club_name, ts')
+    .select('id, school_level, full_name, class, club_id, club_name, ts')
     .order('ts', { ascending: true });
 
   if (error) {
@@ -77,8 +130,7 @@ export async function loadSubmissions(): Promise<Submission[]> {
   return (data ?? []).map(row => ({
     id: row.id,
     schoolLevel: row.school_level,
-    firstName: row.first_name,
-    lastName: row.last_name,
+    fullName: row.full_name,
     class: row.class,
     clubId: row.club_id,
     clubName: row.club_name,
@@ -106,27 +158,23 @@ export type SignupResult =
   | { ok: true; submission: Submission }
   | { ok: false; reason: 'duplicate' | 'full' | 'error'; message: string };
 
+const levelLabel = (level: SchoolLevel) => (level === 'primary' ? 'Primary School' : 'Secondary School');
+
 export async function submitSignup(input: {
   schoolLevel: SchoolLevel;
-  firstName: string;
-  lastName: string;
+  fullName: string;
   studentClass: string;
   clubId: string;
   clubName: string;
 }): Promise<SignupResult> {
-  const fullName = `${input.firstName} ${input.lastName}`;
+  const duplicateMessage = `"${input.fullName}" is already registered for ${levelLabel(input.schoolLevel)}. If this looks wrong, please contact your teacher.`;
 
   const { data: alreadyTaken, error: checkErr } = await supabase.rpc('check_name_taken', {
     p_school_level: input.schoolLevel,
-    p_first_name: input.firstName,
-    p_last_name: input.lastName
+    p_full_name: input.fullName
   });
   if (!checkErr && alreadyTaken) {
-    return {
-      ok: false,
-      reason: 'duplicate',
-      message: `A sign-up for "${fullName}" is already registered. Each student may only sign up once.`
-    };
+    return { ok: false, reason: 'duplicate', message: duplicateMessage };
   }
 
   // Anonymous students have no SELECT permission on submissions (that's what
@@ -135,8 +183,7 @@ export async function submitSignup(input: {
   // the insert server-side and returns the row directly, sidestepping that.
   const { data, error } = await supabase.rpc('submit_signup', {
     p_school_level: input.schoolLevel,
-    p_first_name: input.firstName,
-    p_last_name: input.lastName,
+    p_full_name: input.fullName,
     p_class: input.studentClass,
     p_club_id: input.clubId,
     p_club_name: input.clubName
@@ -147,11 +194,7 @@ export async function submitSignup(input: {
       return { ok: false, reason: 'full', message: `"${input.clubName}" just reached maximum capacity. Please choose another club.` };
     }
     if (error.code === '23505') {
-      return {
-        ok: false,
-        reason: 'duplicate',
-        message: `A sign-up for "${fullName}" is already registered. Each student may only sign up once.`
-      };
+      return { ok: false, reason: 'duplicate', message: duplicateMessage };
     }
     console.error('submitSignup error:', error);
     return { ok: false, reason: 'error', message: 'Failed to save your submission. Please try again.' };
@@ -168,8 +211,7 @@ export async function submitSignup(input: {
     submission: {
       id: row.id,
       schoolLevel: row.school_level,
-      firstName: row.first_name,
-      lastName: row.last_name,
+      fullName: row.full_name,
       class: row.class,
       clubId: row.club_id,
       clubName: row.club_name,
@@ -202,8 +244,7 @@ export function exportSubmissionsToExcel(submissions: Submission[], clubs: Club[
   // Sheet 1: Student Sign-ups
   const studentRows = submissions.map((s, idx) => ({
     '#': idx + 1,
-    'First Name': s.firstName,
-    'Last Name': s.lastName,
+    'Full Name': s.fullName,
     'Class': s.class,
     'Club Selected': s.clubName,
     'Submitted At': s.ts ? new Date(s.ts).toLocaleString() : ''
@@ -212,14 +253,13 @@ export function exportSubmissionsToExcel(submissions: Submission[], clubs: Club[
   const studentWs = XLSX.utils.json_to_sheet(
     studentRows.length > 0
       ? studentRows
-      : [{ '#': '', 'First Name': 'No submissions recorded', 'Last Name': '', 'Class': '', 'Club Selected': '', 'Submitted At': '' }]
+      : [{ '#': '', 'Full Name': 'No submissions recorded', 'Class': '', 'Club Selected': '', 'Submitted At': '' }]
   );
 
   // Set column widths for readability
   studentWs['!cols'] = [
     { wch: 6 },
-    { wch: 20 },
-    { wch: 20 },
+    { wch: 28 },
     { wch: 15 },
     { wch: 25 },
     { wch: 22 }
@@ -256,7 +296,7 @@ export function exportSubmissionsToExcel(submissions: Submission[], clubs: Club[
   }
 
   // Export as .xlsx
-  const fileName = `Cocurricular_Club_Signups_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const fileName = `ECA_CCA_Club_Signups_${new Date().toISOString().slice(0, 10)}.xlsx`;
   XLSX.writeFile(wb, fileName);
 }
 
@@ -267,12 +307,12 @@ export function exportSubmissionsToCsv(submissions: Submission[]): void {
     return s;
   };
 
-  const header = ['First Name', 'Last Name', 'Class', 'Club Selected', 'Submitted At'];
+  const header = ['Full Name', 'Class', 'Club Selected', 'Submitted At'];
   const lines = [header.join(',')];
 
   submissions.forEach(s => {
     const dateStr = s.ts ? new Date(s.ts).toLocaleString() : '';
-    lines.push([csvEscape(s.firstName), csvEscape(s.lastName), csvEscape(s.class), csvEscape(s.clubName), csvEscape(dateStr)].join(','));
+    lines.push([csvEscape(s.fullName), csvEscape(s.class), csvEscape(s.clubName), csvEscape(dateStr)].join(','));
   });
 
   const csv = lines.join('\n');
@@ -280,7 +320,7 @@ export function exportSubmissionsToCsv(submissions: Submission[]): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `cocurricular-signups-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `eca-cca-signups-${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

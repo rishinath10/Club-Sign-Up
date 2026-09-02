@@ -11,12 +11,19 @@ export interface Club {
 export interface Submission {
   id: string;
   schoolLevel: SchoolLevel;
-  firstName: string;
-  lastName: string;
+  fullName: string;
   class: string;
   clubId: string;
   clubName: string;
   ts: string;
+}
+
+// A classroom a student can pick from - editable by teachers, scoped per
+// school level exactly like clubs are.
+export interface Classroom {
+  id: string;
+  name: string;
+  schoolLevel: SchoolLevel;
 }
 
 // Emoji keyed by club id, so the club list is scannable at a glance instead of
@@ -28,7 +35,7 @@ export const CLUB_ICONS: Record<string, string> = {
   'coding-club': '💻',
   'culinary-club': '🍳',
   'dance-club': '💃',
-  'entrepreneurship-club': '💡',
+  'entrepreneurship-club': '💵',
   'futsal-club': '⚽',
   'literary-society': '📖',
   'music-club': '🎵',
@@ -42,17 +49,17 @@ export const CLUB_ICONS: Record<string, string> = {
   'secondary-chess-club': '♟️',
   'secondary-coding-club': '💻',
   'secondary-culinary-club': '🍳',
-  'secondary-entrepreneurship-club': '💡',
+  'secondary-entrepreneurship-club': '💵',
   'secondary-futsal-club': '⚽',
   'secondary-interact-club': '🤝',
   'secondary-media-visual-arts-club': '🖼️',
   'secondary-model-united-nations': '🌐',
-  'secondary-music-band': '🎸',
+  'secondary-music-band': '🥁',
   'secondary-photography-production': '📷',
   'secondary-ping-pong-club': '🏓',
   'secondary-science-innovation-club': '🔬',
   'secondary-taekwondo-club': '🥋',
-  'secondary-youth-volunteer-club': '🤲'
+  'secondary-youth-volunteer-club': '⛑️'
 };
 
 export const DEFAULT_CLUB_ICON = '⭐';

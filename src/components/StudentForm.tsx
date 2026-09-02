@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Club, CLUB_ICONS, DEFAULT_CLUB_ICON, SchoolLevel } from '../types';
+import { Classroom, Club, CLUB_ICONS, DEFAULT_CLUB_ICON, SchoolLevel } from '../types';
 import { submitSignup } from '../services/storage';
 import {
   CheckCircle2,
@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from 'motion/react';
 
 interface StudentFormProps {
   clubs: Club[];
+  classrooms: Classroom[];
   seatCounts: Record<string, number>;
   schoolLevel: SchoolLevel;
   onSubmitted: () => void | Promise<void>;
@@ -26,19 +27,21 @@ type Step = 'DETAILS' | 'CLUB';
 
 const clubIcon = (clubId: string) => CLUB_ICONS[clubId] ?? DEFAULT_CLUB_ICON;
 
-export const StudentForm: React.FC<StudentFormProps> = ({ clubs, seatCounts, schoolLevel, onSubmitted }) => {
+// Cosmetic only, for a friendly "Hi Sarah" - the stored record is always the
+// single full name as entered.
+const firstToken = (fullName: string) => fullName.trim().split(/\s+/)[0] ?? '';
+
+export const StudentForm: React.FC<StudentFormProps> = ({ clubs, classrooms, seatCounts, schoolLevel, onSubmitted }) => {
   const [step, setStep] = useState<Step>('DETAILS');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const [fullName, setFullName] = useState('');
   const [studentClass, setStudentClass] = useState('');
-  const [fieldErrors, setFieldErrors] = useState<{ firstName?: string; lastName?: string; class?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<{ fullName?: string; class?: string }>({});
   const [search, setSearch] = useState('');
   const [selectedClubId, setSelectedClubId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [submittedData, setSubmittedData] = useState<{
-    firstName: string;
-    lastName: string;
+    fullName: string;
     class: string;
     clubId: string;
     clubName: string;
@@ -68,9 +71,8 @@ export const StudentForm: React.FC<StudentFormProps> = ({ clubs, seatCounts, sch
   const handleContinue = (e: React.FormEvent) => {
     e.preventDefault();
     const errors: typeof fieldErrors = {};
-    if (!firstName.trim()) errors.firstName = 'Please enter your first name.';
-    if (!lastName.trim()) errors.lastName = 'Please enter your last name.';
-    if (!studentClass.trim()) errors.class = 'Please enter your class.';
+    if (!fullName.trim()) errors.fullName = 'Please enter your full name.';
+    if (!studentClass.trim()) errors.class = 'Please choose your class.';
 
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
@@ -102,8 +104,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ clubs, seatCounts, sch
       // submitting from different devices at once.
       const result = await submitSignup({
         schoolLevel,
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
+        fullName: fullName.trim(),
         studentClass: studentClass.trim(),
         clubId: selectedClubId,
         clubName: club.name
@@ -120,8 +121,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ clubs, seatCounts, sch
       }
 
       setSubmittedData({
-        firstName: result.submission.firstName,
-        lastName: result.submission.lastName,
+        fullName: result.submission.fullName,
         class: result.submission.class,
         clubId: result.submission.clubId,
         clubName: result.submission.clubName,
@@ -138,8 +138,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ clubs, seatCounts, sch
 
   const handleResetForm = () => {
     setSubmittedData(null);
-    setFirstName('');
-    setLastName('');
+    setFullName('');
     setStudentClass('');
     setSelectedClubId(null);
     setSearch('');
@@ -173,7 +172,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ clubs, seatCounts, sch
           transition={{ duration: 0.3, delay: 0.2 }}
         >
           <h2 className="text-2xl font-bold text-brand-emerald-900 mb-1">
-            You're all set, {submittedData.firstName}!
+            You're all set, {firstToken(submittedData.fullName)}!
           </h2>
           <p className="text-brand-emerald-600 mb-6 text-sm">
             Your place in the club below has been saved.
@@ -202,11 +201,11 @@ export const StudentForm: React.FC<StudentFormProps> = ({ clubs, seatCounts, sch
           <div className="flex justify-between items-center gap-3">
             <span className="text-brand-emerald-500 font-medium">Name</span>
             <span className="font-semibold text-brand-emerald-900 text-right">
-              {submittedData.firstName} {submittedData.lastName}
+              {submittedData.fullName}
             </span>
           </div>
           <div className="flex justify-between items-center gap-3">
-            <span className="text-brand-emerald-500 font-medium">Class</span>
+            <span className="text-brand-emerald-500 font-medium">Class / Year</span>
             <span className="font-semibold text-brand-emerald-900 text-right">{submittedData.class}</span>
           </div>
           <div className="flex justify-between items-center gap-3">
@@ -318,83 +317,68 @@ export const StudentForm: React.FC<StudentFormProps> = ({ clubs, seatCounts, sch
 
           <form onSubmit={handleContinue} className="space-y-5" noValidate>
             <div>
-              <label htmlFor="firstName" className="text-xs font-semibold text-brand-emerald-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <label htmlFor="fullName" className="text-xs font-semibold text-brand-emerald-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5 text-brand-emerald-400" />
-                First Name <span className="text-red-500">*</span>
+                Full Name (as registered in School2Me) <span className="text-red-500">*</span>
               </label>
               <input
-                id="firstName"
+                id="fullName"
                 type="text"
-                autoComplete="given-name"
+                autoComplete="name"
                 autoCapitalize="words"
-                value={firstName}
+                value={fullName}
                 onChange={e => {
-                  setFirstName(e.target.value);
-                  if (fieldErrors.firstName) setFieldErrors({ ...fieldErrors, firstName: undefined });
+                  setFullName(e.target.value);
+                  if (fieldErrors.fullName) setFieldErrors({ ...fieldErrors, fullName: undefined });
                 }}
-                placeholder="e.g. Sarah"
-                aria-invalid={!!fieldErrors.firstName}
+                placeholder="e.g. Sarah Ahmad"
+                aria-invalid={!!fieldErrors.fullName}
                 className={`w-full px-4 py-3 rounded-xl border text-brand-emerald-900 placeholder:text-brand-emerald-300 text-base transition-all focus:ring-2 focus:ring-brand-emerald-800/10 ${
-                  fieldErrors.firstName
+                  fieldErrors.fullName
                     ? 'border-red-400 focus:border-red-500'
                     : 'border-stone-300 focus:border-brand-emerald-800'
                 }`}
               />
-              {fieldErrors.firstName && (
-                <p className="text-xs text-red-600 mt-1.5 font-medium">{fieldErrors.firstName}</p>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor="lastName" className="text-xs font-semibold text-brand-emerald-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-brand-emerald-400" />
-                Last Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="lastName"
-                type="text"
-                autoComplete="family-name"
-                autoCapitalize="words"
-                value={lastName}
-                onChange={e => {
-                  setLastName(e.target.value);
-                  if (fieldErrors.lastName) setFieldErrors({ ...fieldErrors, lastName: undefined });
-                }}
-                placeholder="e.g. Ahmad"
-                aria-invalid={!!fieldErrors.lastName}
-                className={`w-full px-4 py-3 rounded-xl border text-brand-emerald-900 placeholder:text-brand-emerald-300 text-base transition-all focus:ring-2 focus:ring-brand-emerald-800/10 ${
-                  fieldErrors.lastName
-                    ? 'border-red-400 focus:border-red-500'
-                    : 'border-stone-300 focus:border-brand-emerald-800'
-                }`}
-              />
-              {fieldErrors.lastName && (
-                <p className="text-xs text-red-600 mt-1.5 font-medium">{fieldErrors.lastName}</p>
+              {fieldErrors.fullName && (
+                <p className="text-xs text-red-600 mt-1.5 font-medium">{fieldErrors.fullName}</p>
               )}
             </div>
 
             <div>
               <label htmlFor="studentClass" className="text-xs font-semibold text-brand-emerald-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                 <GraduationCap className="w-3.5 h-3.5 text-brand-emerald-400" />
-                Class / Form <span className="text-red-500">*</span>
+                Class / Year <span className="text-red-500">*</span>
               </label>
-              <input
+              <select
                 id="studentClass"
-                type="text"
-                autoCapitalize="words"
                 value={studentClass}
                 onChange={e => {
                   setStudentClass(e.target.value);
                   if (fieldErrors.class) setFieldErrors({ ...fieldErrors, class: undefined });
                 }}
-                placeholder="e.g. 5 Cemerlang"
                 aria-invalid={!!fieldErrors.class}
-                className={`w-full px-4 py-3 rounded-xl border text-brand-emerald-900 placeholder:text-brand-emerald-300 text-base transition-all focus:ring-2 focus:ring-brand-emerald-800/10 ${
+                className={`w-full px-4 py-3 rounded-xl border text-brand-emerald-900 text-base transition-all focus:ring-2 focus:ring-brand-emerald-800/10 bg-white ${
+                  studentClass === '' ? 'text-brand-emerald-300' : ''
+                } ${
                   fieldErrors.class
                     ? 'border-red-400 focus:border-red-500'
                     : 'border-stone-300 focus:border-brand-emerald-800'
                 }`}
-              />
+              >
+                <option value="" disabled>
+                  Choose your class
+                </option>
+                {classrooms.map(c => (
+                  <option key={c.id} value={c.name} className="text-brand-emerald-900">
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              {classrooms.length === 0 && (
+                <p className="text-xs text-brand-turmeric-700 mt-1.5 font-medium">
+                  No classes are set up yet. Please check back once your teacher has added them.
+                </p>
+              )}
               {fieldErrors.class && (
                 <p className="text-xs text-red-600 mt-1.5 font-medium">{fieldErrors.class}</p>
               )}
@@ -422,7 +406,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ clubs, seatCounts, sch
             <div className="flex items-start justify-between gap-3 mb-4">
               <div>
                 <h2 className="text-xl font-bold text-brand-emerald-900">
-                  Hi {firstName.trim()} — pick your club
+                  Hi {firstToken(fullName)} — pick your club
                 </h2>
                 <p className="text-brand-emerald-500 text-sm mt-1">
                   Choose <strong className="text-brand-emerald-700">one</strong> club. Tap a card to select it.

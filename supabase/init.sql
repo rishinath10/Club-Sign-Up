@@ -27,14 +27,40 @@ create table if not exists public.clubs (
 create table if not exists public.submissions (
   id uuid primary key default gen_random_uuid(),
   school_level text not null,
-  first_name text not null,
-  last_name text not null,
+  full_name text not null,
   class text not null,
   club_id text not null references public.clubs(id) on delete cascade,
   club_name text not null,
   ts timestamptz not null default now(),
   constraint submissions_school_level_check check (school_level in ('primary', 'secondary'))
 );
+
+-- Migration path for a database still on the old first_name/last_name split
+-- (a fresh install never has these columns, so this block is then a no-op).
+-- Backfills full_name from the two columns before dropping them, rather than
+-- resetting, so nothing already submitted is lost.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'submissions' and column_name = 'first_name'
+  ) then
+    if not exists (
+      select 1 from information_schema.columns
+      where table_schema = 'public' and table_name = 'submissions' and column_name = 'full_name'
+    ) then
+      alter table public.submissions add column full_name text;
+    end if;
+
+    update public.submissions
+    set full_name = trim(first_name || ' ' || last_name)
+    where full_name is null;
+
+    alter table public.submissions alter column full_name set not null;
+    alter table public.submissions drop column first_name;
+    alter table public.submissions drop column last_name;
+  end if;
+end $$;
 
 create index if not exists submissions_club_id_idx on public.submissions (club_id);
 
@@ -43,10 +69,21 @@ create index if not exists submissions_club_id_idx on public.submissions (club_i
 -- people and must not block each other.
 drop index if exists public.submissions_name_unique_idx;
 create unique index submissions_name_unique_idx
-  on public.submissions (school_level, lower(first_name), lower(last_name));
+  on public.submissions (school_level, lower(full_name));
+
+-- Classroom lists, editable by teachers, scoped per section exactly like
+-- clubs are - a Primary classroom list is independent of Secondary's.
+create table if not exists public.classrooms (
+  id text primary key,
+  name text not null,
+  school_level text not null,
+  created_at timestamptz not null default now(),
+  constraint classrooms_school_level_check check (school_level in ('primary', 'secondary'))
+);
 
 alter table public.clubs enable row level security;
 alter table public.submissions enable row level security;
+alter table public.classrooms enable row level security;
 
 -- ---------------------------------------------------------------------------
 -- Teacher allowlist
@@ -91,6 +128,14 @@ create policy "clubs_public_read" on public.clubs
 
 drop policy if exists "clubs_teacher_write" on public.clubs;
 create policy "clubs_teacher_write" on public.clubs
+  for all to authenticated using (public.is_teacher()) with check (public.is_teacher());
+
+drop policy if exists "classrooms_public_read" on public.classrooms;
+create policy "classrooms_public_read" on public.classrooms
+  for select to anon, authenticated using (true);
+
+drop policy if exists "classrooms_teacher_write" on public.classrooms;
+create policy "classrooms_teacher_write" on public.classrooms
   for all to authenticated using (public.is_teacher()) with check (public.is_teacher());
 
 -- Students can submit sign-ups, but cannot read the raw submissions table
@@ -140,7 +185,7 @@ grant select on public.club_seat_counts to anon, authenticated;
 
 drop function if exists public.check_name_taken(text, text);
 drop function if exists public.check_name_taken(text, text, text);
-create or replace function public.check_name_taken(p_school_level text, p_first_name text, p_last_name text)
+create or replace function public.check_name_taken(p_school_level text, p_full_name text)
 returns boolean
 language sql
 security definer
@@ -149,12 +194,11 @@ as $$
   select exists (
     select 1 from public.submissions
     where school_level = p_school_level
-      and lower(first_name) = lower(p_first_name)
-      and lower(last_name) = lower(p_last_name)
+      and lower(full_name) = lower(p_full_name)
   );
 $$;
 
-grant execute on function public.check_name_taken(text, text, text) to anon, authenticated;
+grant execute on function public.check_name_taken(text, text) to anon, authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Capacity enforcement (atomic - locks the club row so concurrent sign-ups
@@ -201,8 +245,7 @@ drop function if exists public.submit_signup(text, text, text, text, text);
 drop function if exists public.submit_signup(text, text, text, text, text, text);
 create or replace function public.submit_signup(
   p_school_level text,
-  p_first_name text,
-  p_last_name text,
+  p_full_name text,
   p_class text,
   p_club_id text,
   p_club_name text
@@ -210,8 +253,7 @@ create or replace function public.submit_signup(
 returns table (
   id uuid,
   school_level text,
-  first_name text,
-  last_name text,
+  full_name text,
   class text,
   club_id text,
   club_name text,
@@ -223,14 +265,14 @@ set search_path = public
 as $$
 begin
   return query
-    insert into public.submissions (school_level, first_name, last_name, class, club_id, club_name)
-    values (p_school_level, p_first_name, p_last_name, p_class, p_club_id, p_club_name)
-    returning submissions.id, submissions.school_level, submissions.first_name, submissions.last_name,
+    insert into public.submissions (school_level, full_name, class, club_id, club_name)
+    values (p_school_level, p_full_name, p_class, p_club_id, p_club_name)
+    returning submissions.id, submissions.school_level, submissions.full_name,
               submissions.class, submissions.club_id, submissions.club_name, submissions.ts;
 end;
 $$;
 
-grant execute on function public.submit_signup(text, text, text, text, text, text) to anon, authenticated;
+grant execute on function public.submit_signup(text, text, text, text, text) to anon, authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Default clubs (only seeds if the table is empty, so this is safe to re-run)

@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Club, Submission, SchoolLevel, defaultClubsFor } from '../types';
+import { Classroom, Club, Submission, SchoolLevel, defaultClubsFor } from '../types';
 import {
   loadClubsConfig,
+  loadClassrooms,
   loadSubmissions,
   saveClubsConfig,
+  saveClassrooms,
   deleteSubmission,
   deleteAllSubmissions,
   exportSubmissionsToExcel,
@@ -29,7 +31,8 @@ import {
   UserCheck,
   RefreshCw,
   Backpack,
-  School
+  School,
+  DoorOpen
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -48,10 +51,14 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({ onLogout }) => {
 
   const [clubs, setClubs] = useState<Club[]>([]);
   const [editedClubs, setEditedClubs] = useState<Club[]>([]);
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+  const [editedClassrooms, setEditedClassrooms] = useState<Classroom[]>([]);
   const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingClubs, setIsSavingClubs] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
+  const [isSavingClassrooms, setIsSavingClassrooms] = useState(false);
+  const [classroomSaveMsg, setClassroomSaveMsg] = useState('');
 
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -68,6 +75,12 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({ onLogout }) => {
     setEditedClubs(JSON.parse(JSON.stringify(loaded)));
   }, []);
 
+  const refreshClassrooms = useCallback(async (level: SchoolLevel) => {
+    const loaded = await loadClassrooms(level);
+    setClassrooms(loaded);
+    setEditedClassrooms(JSON.parse(JSON.stringify(loaded)));
+  }, []);
+
   const refreshSubmissions = useCallback(async () => {
     const loaded = await loadSubmissions();
     setAllSubmissions(loaded);
@@ -77,10 +90,10 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({ onLogout }) => {
     (async () => {
       const session = await getTeacherSession();
       setTeacherEmail(session?.user?.email ?? null);
-      await Promise.all([refreshClubs('primary'), refreshSubmissions()]);
+      await Promise.all([refreshClubs('primary'), refreshClassrooms('primary'), refreshSubmissions()]);
       setIsLoading(false);
     })();
-  }, [refreshClubs, refreshSubmissions]);
+  }, [refreshClubs, refreshClassrooms, refreshSubmissions]);
 
   // Switching sections: reset per-section UI state and load that section's clubs
   const handleSwitchLevel = async (level: SchoolLevel) => {
@@ -89,7 +102,8 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({ onLogout }) => {
     setSearchQuery('');
     setSelectedClubFilter('ALL');
     setSaveSuccessMsg('');
-    await refreshClubs(level);
+    setClassroomSaveMsg('');
+    await Promise.all([refreshClubs(level), refreshClassrooms(level)]);
   };
 
   const submissionsForLevel = allSubmissions.filter(s => s.schoolLevel === activeLevel);
@@ -141,6 +155,49 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({ onLogout }) => {
     setEditedClubs(editedClubs.filter(c => c.id !== clubId));
   };
 
+  // Handle saving classroom changes
+  const handleSaveClassrooms = async () => {
+    setIsSavingClassrooms(true);
+    setClassroomSaveMsg('');
+
+    const sanitizedClassrooms = editedClassrooms.map(c => ({
+      ...c,
+      name: c.name.trim() || 'Untitled Class',
+      schoolLevel: activeLevel
+    }));
+
+    const ok = await saveClassrooms(activeLevel, sanitizedClassrooms);
+    if (ok) {
+      setClassrooms(sanitizedClassrooms);
+      setEditedClassrooms(sanitizedClassrooms);
+      setClassroomSaveMsg('Classroom list saved successfully!');
+      setTimeout(() => setClassroomSaveMsg(''), 3000);
+    }
+    setIsSavingClassrooms(false);
+  };
+
+  // Add new classroom
+  const handleAddClassroom = () => {
+    const newId = `${activeLevel}-class-${Date.now()}`;
+    const newClassroom: Classroom = {
+      id: newId,
+      name: 'New Class',
+      schoolLevel: activeLevel
+    };
+    setEditedClassrooms([...editedClassrooms, newClassroom]);
+  };
+
+  // Delete a classroom from config
+  const handleDeleteClassroom = (classroomId: string, classroomName: string) => {
+    const studentCount = submissionsForLevel.filter(s => s.class === classroomName).length;
+    if (studentCount > 0) {
+      if (!confirm(`Warning: ${studentCount} student(s) already have this class recorded on their sign-up. Removing it only affects the dropdown for future sign-ups - existing records are untouched. Continue?`)) {
+        return;
+      }
+    }
+    setEditedClassrooms(editedClassrooms.filter(c => c.id !== classroomId));
+  };
+
   // Reset all submissions for the active section only (Double confirmation)
   const handlePerformResetSubmissions = async () => {
     if (resetConfirmInput.trim().toLowerCase() !== 'reset') {
@@ -188,8 +245,7 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({ onLogout }) => {
   // Filter submissions (already scoped to the active section)
   const filteredSubmissions = submissionsForLevel.filter(s => {
     const matchesSearch =
-      s.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.class.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.clubName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesClub = selectedClubFilter === 'ALL' || s.clubId === selectedClubFilter;
@@ -319,6 +375,93 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({ onLogout }) => {
                 {fullClubsCount} / {clubs.length}
               </span>
             </div>
+          </div>
+        </div>
+
+        {/* Classroom Configuration Card */}
+        <div className="bg-white rounded-2xl border border-stone-200 p-6 md:p-8 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+            <div>
+              <h3 className="text-lg font-bold text-brand-emerald-900 flex items-center gap-2">
+                <DoorOpen className="w-5 h-5 text-brand-turmeric-600" />
+                Classroom List
+              </h3>
+              <p className="text-brand-emerald-500 text-xs mt-0.5">
+                These names populate the "Class / Year" dropdown students pick from on the sign-up form.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleAddClassroom}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-brand-emerald-900 text-xs font-semibold transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add Classroom
+            </button>
+          </div>
+
+          {editedClassrooms.length === 0 ? (
+            <div className="text-center py-8 border-2 border-dashed border-stone-200 rounded-xl mb-2">
+              <p className="text-brand-emerald-600 text-sm font-medium">No classrooms added yet.</p>
+              <p className="text-brand-emerald-400 text-xs mt-1">
+                Students won't be able to pick a class until you add at least one here.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {editedClassrooms.map((classroom, idx) => (
+                <div
+                  key={classroom.id}
+                  className="flex items-center gap-2 p-2.5 rounded-xl border border-stone-200 bg-stone-50/50"
+                >
+                  <input
+                    type="text"
+                    value={classroom.name}
+                    onChange={e => {
+                      const next = [...editedClassrooms];
+                      next[idx].name = e.target.value;
+                      setEditedClassrooms(next);
+                    }}
+                    placeholder="e.g. 5 Cemerlang"
+                    className="flex-1 min-w-0 px-3 py-1.5 text-sm rounded-lg border border-stone-300 bg-white font-medium text-brand-emerald-900"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteClassroom(classroom.id, classroom.name)}
+                    title="Remove Classroom"
+                    className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors shrink-0"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-6 flex items-center justify-between gap-4">
+            <AnimatePresence>
+              {classroomSaveMsg ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="text-emerald-700 font-medium text-sm flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  {classroomSaveMsg}
+                </motion.div>
+              ) : <div />}
+            </AnimatePresence>
+
+            <button
+              type="button"
+              onClick={handleSaveClassrooms}
+              disabled={isSavingClassrooms}
+              className="px-5 py-2.5 rounded-xl bg-brand-emerald-900 hover:bg-brand-emerald-800 text-white text-sm font-bold transition-all cursor-pointer shadow-xs"
+            >
+              {isSavingClassrooms ? 'Saving...' : 'Save Classrooms'}
+            </button>
           </div>
         </div>
 
@@ -504,9 +647,8 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({ onLogout }) => {
                 <thead className="bg-stone-100/80 text-brand-emerald-600 font-semibold uppercase tracking-wider border-b border-stone-200">
                   <tr>
                     <th className="p-3">#</th>
-                    <th className="p-3">First Name</th>
-                    <th className="p-3">Last Name</th>
-                    <th className="p-3">Class</th>
+                    <th className="p-3">Full Name</th>
+                    <th className="p-3">Class / Year</th>
                     <th className="p-3">Club Selected</th>
                     <th className="p-3">Submitted At</th>
                     <th className="p-3 text-right">Action</th>
@@ -516,8 +658,7 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({ onLogout }) => {
                   {filteredSubmissions.map((sub, index) => (
                     <tr key={sub.id || index} className="hover:bg-stone-50/80 transition-colors">
                       <td className="p-3 font-mono text-brand-emerald-400">{index + 1}</td>
-                      <td className="p-3 font-bold text-brand-emerald-900">{sub.firstName}</td>
-                      <td className="p-3 font-bold text-brand-emerald-900">{sub.lastName}</td>
+                      <td className="p-3 font-bold text-brand-emerald-900">{sub.fullName}</td>
                       <td className="p-3 font-medium text-brand-emerald-700">{sub.class}</td>
                       <td className="p-3">
                         <span className="inline-block bg-brand-turmeric-50 text-brand-turmeric-700 border border-brand-turmeric-100 px-2.5 py-0.5 rounded-md font-semibold">
@@ -530,7 +671,7 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({ onLogout }) => {
                       <td className="p-3 text-right">
                         <button
                           type="button"
-                          onClick={() => handleDeleteSingleSubmission(sub.id, `${sub.firstName} ${sub.lastName}`)}
+                          onClick={() => handleDeleteSingleSubmission(sub.id, sub.fullName)}
                           title="Remove student submission"
                           className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
                         >

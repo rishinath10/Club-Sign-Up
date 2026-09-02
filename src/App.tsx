@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Club, SchoolLevel } from './types';
-import { loadClubsConfig, loadClubSeatCounts } from './services/storage';
+import { Classroom, Club, SchoolLevel } from './types';
+import { loadClassrooms, loadClubsConfig, loadClubSeatCounts } from './services/storage';
 import { getTeacherSession, onTeacherAuthStateChange, signOutTeacher } from './services/auth';
 import { StudentForm } from './components/StudentForm';
 import { TeacherTools } from './components/TeacherTools';
@@ -18,6 +18,7 @@ function readSchoolLevelFromUrl(): SchoolLevel | null {
 export default function App() {
   const [schoolLevel, setSchoolLevel] = useState<SchoolLevel | null>(() => readSchoolLevelFromUrl());
   const [clubs, setClubs] = useState<Club[]>([]);
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [seatCounts, setSeatCounts] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState<'STUDENT' | 'TEACHER'>('STUDENT');
@@ -51,13 +52,18 @@ export default function App() {
     window.history.replaceState({}, '', url);
   };
 
-  // Public data (club list + live seat counts) for the currently chosen
-  // school level - safe for anonymous students.
+  // Public data (club list, classroom list, live seat counts) for the
+  // currently chosen school level - safe for anonymous students.
   const refreshPublicData = useCallback(async () => {
     if (!schoolLevel) return;
-    const [loadedClubs, loadedCounts] = await Promise.all([loadClubsConfig(schoolLevel), loadClubSeatCounts()]);
+    const [loadedClubs, loadedCounts, loadedClassrooms] = await Promise.all([
+      loadClubsConfig(schoolLevel),
+      loadClubSeatCounts(),
+      loadClassrooms(schoolLevel)
+    ]);
     setClubs(loadedClubs);
     setSeatCounts(loadedCounts);
+    setClassrooms(loadedClassrooms);
   }, [schoolLevel]);
 
   useEffect(() => {
@@ -135,7 +141,7 @@ export default function App() {
             <div>
               <div className="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-widest text-brand-turmeric-600 mb-1">
                 <GraduationCap className="w-4 h-4" />
-                Cocurricular Sign-Up{levelLabel && activeView === 'STUDENT' ? ` — ${levelLabel}` : ''}
+                ECA/CCA Sign-Up{levelLabel && activeView === 'STUDENT' ? ` — ${levelLabel}` : ''}
               </div>
               <h1 className="text-3xl md:text-4xl font-extrabold text-brand-emerald-950 tracking-tight">
                 {activeView === 'STUDENT' ? 'Choose Your Club' : 'Teacher Dashboard'}
@@ -197,7 +203,13 @@ export default function App() {
             <p className="text-brand-emerald-600 font-medium text-sm">Loading clubs and live seating...</p>
           </div>
         ) : (
-          <StudentForm clubs={clubs} seatCounts={seatCounts} schoolLevel={schoolLevel} onSubmitted={refreshPublicData} />
+          <StudentForm
+            clubs={clubs}
+            classrooms={classrooms}
+            seatCounts={seatCounts}
+            schoolLevel={schoolLevel}
+            onSubmitted={refreshPublicData}
+          />
         )}
 
         {/* Bottom Footer - the teacher toggle link only appears once teacher access is revealed */}
@@ -219,7 +231,7 @@ export default function App() {
             </button>
           )}
           <p className="text-[11px] text-brand-emerald-400 mt-2">
-            Stars International School &bull; Cocurricular Club Sign-Up
+            Stars International School &bull; ECA/CCA Club Sign-Up
           </p>
           <p className="text-[11px] text-brand-emerald-400/90 mt-3 flex items-center justify-center gap-x-1.5 gap-y-1 flex-wrap">
             <span>Powered by</span>
