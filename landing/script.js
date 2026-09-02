@@ -1,54 +1,86 @@
-// Contact form -> Web3Forms (free form-to-email service, no backend needed).
-// TODO: replace this placeholder with your own access key before going live:
-//   1. Go to https://web3forms.com and enter the email you want submissions sent to.
-//   2. Copy the access key it gives you.
-//   3. Paste it below in place of "REPLACE_WITH_YOUR_WEB3FORMS_ACCESS_KEY".
+/* ── Header: solid + compact once scrolled ───────────────── */
+const header = document.getElementById("siteHeader");
+const onScroll = () => header.classList.toggle("scrolled", window.scrollY > 8);
+onScroll();
+window.addEventListener("scroll", onScroll, { passive: true });
+
+/* ── Scroll reveals ──────────────────────────────────────────
+   Elements are visible by default; the `js` class on <html> is
+   what hides them, so a failed script or an unsupported browser
+   leaves the page fully readable rather than blank.           */
+const revealables = document.querySelectorAll(".reveal");
+
+if ("IntersectionObserver" in window) {
+  const io = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add("in");
+        io.unobserve(entry.target);
+      });
+    },
+    { rootMargin: "0px 0px -12% 0px", threshold: 0.08 }
+  );
+  revealables.forEach((el) => io.observe(el));
+} else {
+  revealables.forEach((el) => el.classList.add("in"));
+}
+
+/* ── Contact form → Web3Forms ────────────────────────────────
+   Free form-to-email relay, no backend to run.
+   TODO before going live:
+     1. Go to https://web3forms.com, enter the address that should
+        receive submissions.
+     2. Paste the access key it gives you below.                */
 const WEB3FORMS_ACCESS_KEY = "REPLACE_WITH_YOUR_WEB3FORMS_ACCESS_KEY";
 
 const form = document.getElementById("contactForm");
 const status = document.getElementById("formStatus");
 
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
+const setStatus = (text, kind = "") => {
+  status.textContent = text;
+  status.className = kind ? `form-status ${kind}` : "form-status";
+};
 
-  if (WEB3FORMS_ACCESS_KEY === "REPLACE_WITH_YOUR_WEB3FORMS_ACCESS_KEY") {
-    status.textContent = "Form isn't wired up to an email yet — add a Web3Forms access key in script.js.";
-    status.className = "form-status err";
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (!form.checkValidity()) {
+    setStatus("Please fill in every field so we know how to help.", "err");
+    form.reportValidity();
     return;
   }
 
-  const submitBtn = form.querySelector("button[type=submit]");
-  submitBtn.disabled = true;
-  status.textContent = "Sending...";
-  status.className = "form-status";
+  if (WEB3FORMS_ACCESS_KEY === "REPLACE_WITH_YOUR_WEB3FORMS_ACCESS_KEY") {
+    setStatus("This form isn't connected to an inbox yet — add a Web3Forms access key in script.js.", "err");
+    return;
+  }
 
-  const payload = {
-    access_key: WEB3FORMS_ACCESS_KEY,
-    subject: "New HubiForm request",
-    name: form.name.value,
-    email: form.email.value,
-    message: form.message.value,
-  };
+  const submit = form.querySelector("button[type=submit]");
+  submit.disabled = true;
+  setStatus("Sending…");
 
   try {
-    const res = await fetch("https://api.web3forms.com/submit", {
+    const response = await fetch("https://api.web3forms.com/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        access_key: WEB3FORMS_ACCESS_KEY,
+        subject: "New HubiForm request",
+        name: form.name.value,
+        email: form.email.value,
+        message: form.message.value,
+      }),
     });
-    const result = await res.json();
+    const result = await response.json();
 
-    if (result.success) {
-      status.textContent = "Thanks! We'll get back to you shortly.";
-      status.className = "form-status ok";
-      form.reset();
-    } else {
-      throw new Error(result.message || "Submission failed");
-    }
-  } catch (err) {
-    status.textContent = "Something went wrong sending that — please try again.";
-    status.className = "form-status err";
+    if (!result.success) throw new Error(result.message || "Submission failed");
+
+    setStatus("Thanks — we'll be in touch shortly.", "ok");
+    form.reset();
+  } catch (error) {
+    setStatus("That didn't send. Please try again, or email us directly.", "err");
   } finally {
-    submitBtn.disabled = false;
+    submit.disabled = false;
   }
 });
