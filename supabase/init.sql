@@ -315,6 +315,32 @@ select * from (values
 where not exists (select 1 from public.clubs);
 
 -- ---------------------------------------------------------------------------
+-- Default classrooms (only seeds a level if it currently has none, so this
+-- is safe to re-run and won't overwrite classes a teacher later edits or
+-- adds via Teacher Tools)
+-- ---------------------------------------------------------------------------
+
+insert into public.classrooms (id, name, school_level)
+select * from (values
+  ('primary-1-alpha', '1 Alpha', 'primary'),
+  ('primary-1-sigma', '1 Sigma', 'primary'),
+  ('primary-2-alpha', '2 Alpha', 'primary'),
+  ('primary-2-gamma', '2 Gamma', 'primary'),
+  ('primary-2-sigma', '2 Sigma', 'primary'),
+  ('primary-3-alpha', '3 Alpha', 'primary'),
+  ('primary-3-gamma', '3 Gamma', 'primary'),
+  ('primary-3-sigma', '3 Sigma', 'primary'),
+  ('primary-4-alpha', '4 Alpha', 'primary'),
+  ('primary-4-gamma', '4 Gamma', 'primary'),
+  ('primary-4-sigma', '4 Sigma', 'primary'),
+  ('primary-5-alpha', '5 Alpha', 'primary'),
+  ('primary-5-sigma', '5 Sigma', 'primary'),
+  ('primary-6-alpha', '6 Alpha', 'primary'),
+  ('primary-6-sigma', '6 Sigma', 'primary')
+) as v(id, name, school_level)
+where not exists (select 1 from public.classrooms where school_level = 'primary');
+
+-- ---------------------------------------------------------------------------
 -- Teacher login account
 --
 -- IMPORTANT: change v_password below before running, or change the
