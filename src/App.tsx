@@ -66,19 +66,33 @@ export default function App() {
     if (path === 'teacher' || new URLSearchParams(window.location.search).has('teacher')) {
       setTeacherAccessRevealed(true);
     }
+    // /teacher is a destination, not a hint: go straight to the sign-in rather
+    // than dropping a teacher on the student's "which school section?" question.
+    // ?teacher stays a reveal-only flag, so /primary?teacher still shows the form.
+    if (path === 'teacher') {
+      setActiveView('TEACHER');
+    }
   }, []);
 
   useEffect(() => {
     (async () => {
-      const session = await getTeacherSession();
-      setIsTeacherAuthenticated(!!session);
-      await refreshPublicData();
-      setIsLoading(false);
+      try {
+        const session = await getTeacherSession();
+        setIsTeacherAuthenticated(!!session);
+        await refreshPublicData();
+      } finally {
+        // Whatever happens above, students must not be left on the spinner -
+        // the club list falls back to defaults when the backend is unreachable.
+        setIsLoading(false);
+      }
     })();
 
-    const unsubscribe = onTeacherAuthStateChange(session => {
+    const unsubscribe = onTeacherAuthStateChange((session, event) => {
       setIsTeacherAuthenticated(!!session);
-      if (!session) setActiveView('STUDENT');
+      // Only a real sign-out sends the teacher back to the student view. This
+      // listener also fires once on subscribe with no session, which would
+      // otherwise immediately undo landing on /teacher.
+      if (event === 'SIGNED_OUT') setActiveView('STUDENT');
     });
 
     // Background sync every 5 seconds to catch live seat updates from other devices
@@ -206,6 +220,19 @@ export default function App() {
           )}
           <p className="text-[11px] text-brand-emerald-400 mt-2">
             Stars International School &bull; Cocurricular Club Sign-Up
+          </p>
+          <p className="text-[11px] text-brand-emerald-400/90 mt-3 flex items-center justify-center gap-x-1.5 gap-y-1 flex-wrap">
+            <span>Powered by</span>
+            <a
+              href="https://hubiform.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-bold text-brand-emerald-600 hover:text-brand-emerald-900 transition-colors"
+            >
+              HubiForm
+            </a>
+            <span aria-hidden="true">&middot;</span>
+            <span>A product of Art Engine My Solutions</span>
           </p>
         </footer>
       </main>
