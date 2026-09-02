@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HubiForm — Forms made simple. Information managed beautifully.</title>
+<meta name="description" content="Create forms, collect submissions, and manage everything in one elegant workspace." />
+<link rel="icon" type="image/png" href="assets/hubiform-icon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="#top">
+      <img src="assets/hubiform-icon.png" alt="" class="brand-mark" width="40" height="40" />
+      <span class="brand-word">
+        <span class="brand-hubi">Hubi</span><span class="brand-form">Form</span>
+      </span>
+    </a>
+    <a class="btn btn-primary btn-small" href="#contact">Get Started Free</a>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero paper-bg">
+    <div class="hero-torn-accent" aria-hidden="true"></div>
+    <div class="wrap hero-inner">
+      <div class="hero-copy">
+        <h1 class="display">Forms made simple.<br />Information managed <em>beautifully.</em></h1>
+        <p class="lede">Create forms, collect submissions, and manage everything in one elegant workspace.</p>
+        <div class="hero-ctas">
+          <a href="#contact" class="btn btn-primary">Get Started Free</a>
+          <a href="#features" class="btn btn-link">See How It Works <span aria-hidden="true">&rarr;</span></a>
+        </div>
+      </div>
+      <div class="hero-art" aria-hidden="true">
+        <svg viewBox="0 0 480 460" class="hero-svg" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="sealGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#9c2c3a"/>
+              <stop offset="100%" stop-color="#661620"/>
+            </linearGradient>
+            <filter id="paperShadow" x="-30%" y="-30%" width="160%" height="160%">
+              <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#3a1c14" flood-opacity="0.22"/>
+            </filter>
+          </defs>
+
+          <!-- back sheet -->
+          <g filter="url(#paperShadow)">
+            <path d="M70 40 L400 20 Q412 20 412 32 L420 380 Q420 392 408 393 L60 410 Q48 410 47 398 L52 55 Q53 42 70 40 Z" fill="#f4efe2" stroke="#e2d9c2" stroke-width="1.5"/>
+          </g>
+          <!-- front sheet -->
+          <g filter="url(#paperShadow)">
+            <path d="M96 70 L410 55 Q422 55 422 67 L428 360 Q428 372 416 374 L88 398 Q76 398 76 386 L82 90 Q83 72 96 70 Z" fill="#faf6ec" stroke="#e6ddc6" stroke-width="1.5"/>
+          </g>
+
+          <!-- form content lines -->
+          <text x="150" y="128" font-family="Playfair Display, serif" font-size="20" fill="#2a2118" font-weight="600">New Application Form</text>
+          <line x1="118" y1="145" x2="350" y2="143" stroke="#d8cdb2" stroke-width="1.5"/>
+
+          <g font-family="Inter, sans-serif" fill="#8a7f68">
+            <text x="118" y="182" font-size="12" letter-spacing="0.5" fill="#6b1622" font-weight="600">FULL NAME</text>
+            <text x="118" y="204" font-size="14">Enter your name</text>
+            <line x1="118" y1="215" x2="350" y2="214" stroke="#e6ddc6" stroke-width="1.2"/>
+
+            <text x="118" y="240" font-size="12" letter-spacing="0.5" fill="#6b1622" font-weight="600">EMAIL ADDRESS</text>
+            <text x="118" y="262" font-size="14">Enter your email</text>
+            <line x1="118" y1="273" x2="350" y2="272" stroke="#e6ddc6" stroke-width="1.2"/>
+
+            <text x="118" y="298" font-size="12" letter-spacing="0.5" fill="#6b1622" font-weight="600">PHONE NUMBER</text>
+            <text x="118" y="320" font-size="14">Enter your phone number</text>
+            <line x1="118" y1="331" x2="350" y2="330" stroke="#e6ddc6" stroke-width="1.2"/>
+          </g>
+
+          <!-- paperclip -->
+          <path d="M154 58 C154 40 180 40 180 58 L180 110 C180 122 164 122 164 110 L164 66" fill="none" stroke="#b7ac8f" stroke-width="6" stroke-linecap="round"/>
+
+          <!-- wax seal, resting in the clear space below the last field -->
+          <g transform="translate(150,368)">
+            <circle r="27" fill="url(#sealGrad)" filter="url(#paperShadow)"/>
+            <circle r="27" fill="none" stroke="#4c0f18" stroke-width="1" opacity="0.4"/>
+            <g transform="translate(-10,-12) scale(0.68)" fill="#f3d9c8">
+              <path d="M18 3 C22 8 20 16 12 22 C9 15 8 8 18 3 Z"/>
+              <path d="M9 27 L20 6" stroke="#f3d9c8" stroke-width="1.8" fill="none"/>
+            </g>
+          </g>
+
+          <!-- quill: feather cluster over the red backdrop, shaft resting along the paper's right edge -->
+          <g transform="translate(415,60) rotate(124)">
+            <path d="M0,-108 C22,-98 36,-66 32,-26 C30,6 18,36 5,66 L-3,108 L-10,108 C-16,74 -18,36 -14,2 C-12,-36 -17,-76 0,-108 Z" fill="#f6efe0" stroke="#c9bd9d" stroke-width="1"/>
+            <line x1="-4" y1="-100" x2="-4" y2="100" stroke="#c9bd9d" stroke-width="1.3" opacity="0.9"/>
+            <line x1="-4" y1="-72" x2="20" y2="-56" stroke="#c9bd9d" stroke-width="1" opacity="0.7"/>
+            <line x1="-4" y1="-40" x2="23" y2="-20" stroke="#c9bd9d" stroke-width="1" opacity="0.7"/>
+            <line x1="-4" y1="-4" x2="20" y2="18" stroke="#c9bd9d" stroke-width="1" opacity="0.7"/>
+            <line x1="-4" y1="32" x2="14" y2="52" stroke="#c9bd9d" stroke-width="1" opacity="0.7"/>
+            <line x1="-4" y1="64" x2="6" y2="80" stroke="#c9bd9d" stroke-width="1" opacity="0.7"/>
+          </g>
+          <line x1="398" y1="140" x2="300" y2="400" stroke="#4a3a2c" stroke-width="4" stroke-linecap="round"/>
+          <path d="M300 400 L288 424 L312 408 Z" fill="#3a2c20"/>
+        </svg>
+      </div>
+    </div>
+    <svg class="torn-divider" preserveAspectRatio="none" viewBox="0 0 1200 60" xmlns="http://www.w3.org/2000/svg">
+      <path d="M0,40 L40,22 L85,44 L130,18 L175,38 L222,14 L268,42 L312,20 L360,46 L405,16 L452,40 L498,20 L545,44 L590,18 L637,40 L682,22 L728,44 L774,16 L820,40 L866,20 L912,44 L958,18 L1005,40 L1050,22 L1095,44 L1140,18 L1200,36 L1200,60 L0,60 Z" fill="#f4efe1"/>
+    </svg>
+  </section>
+
+  <!-- ============ TRUST BAR ============ -->
+  <section class="trust paper-bg-alt">
+    <div class="wrap">
+      <p class="eyebrow center">Trusted by teams who value simplicity</p>
+      <div class="trust-grid">
+        <div class="trust-item">
+          <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="3" width="16" height="18" rx="1.5"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
+          <h3>Easy to Create</h3>
+          <p>Build professional forms in minutes.</p>
+        </div>
+        <div class="trust-item">
+          <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 12 L8 4 L16 4 L20 12 L20 19 L4 19 Z"/><path d="M4 12 L9 12 L9 15 L15 15 L15 12 L20 12"/></svg>
+          <h3>Collect Anywhere</h3>
+          <p>Share and collect submissions anytime, anywhere.</p>
+        </div>
+        <div class="trust-item">
+          <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="5" y1="20" x2="5" y2="12"/><line x1="12" y1="20" x2="12" y2="7"/><line x1="19" y1="20" x2="19" y2="15"/><line x1="3" y1="20" x2="21" y2="20"/></svg>
+          <h3>Powerful Insights</h3>
+          <p>Analyze responses and make better decisions.</p>
+        </div>
+        <div class="trust-item">
+          <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="5" y="11" width="14" height="10" rx="1.5"/><path d="M8 11 V7 a4 4 0 0 1 8 0 v4"/></svg>
+          <h3>Secure &amp; Reliable</h3>
+          <p>Careful safeguards to protect your data.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FEATURES ============ -->
+  <section id="features" class="features paper-bg">
+    <div class="wrap features-inner">
+      <div class="features-copy">
+        <p class="eyebrow">Built for the way you work</p>
+        <h2 class="display-sm">Everything you need to manage <em>forms</em> and <em>submissions.</em></h2>
+        <p class="lede">From simple contact forms to more involved workflows, HubiForm gives you the tools to build, share, collect, and manage with ease.</p>
+      </div>
+      <div class="dash-mock" aria-hidden="true">
+        <div class="dash-clip"></div>
+        <div class="dash-window">
+          <div class="dash-sidebar">
+            <div class="dash-brand"><img src="assets/hubiform-icon.png" width="20" height="20" alt=""/> HubiForm</div>
+            <nav>
+              <span class="dash-nav-item active">Dashboard</span>
+              <span class="dash-nav-item">Forms</span>
+              <span class="dash-nav-item">Submissions</span>
+              <span class="dash-nav-item">Analytics</span>
+              <span class="dash-nav-item">Settings</span>
+            </nav>
+          </div>
+          <div class="dash-main">
+            <h4>Dashboard</h4>
+            <div class="dash-cards">
+              <div class="dash-card"><span class="dash-card-label">Active Forms</span><span class="dash-card-value">—</span></div>
+              <div class="dash-card"><span class="dash-card-label">Submissions</span><span class="dash-card-value">—</span></div>
+              <div class="dash-card"><span class="dash-card-label">Uptime</span><span class="dash-card-value">—</span></div>
+            </div>
+            <div class="dash-chart">
+              <svg viewBox="0 0 300 90" preserveAspectRatio="none">
+                <polyline points="0,60 40,45 80,55 120,30 160,40 200,15 240,28 300,10" fill="none" stroke="#7a1d29" stroke-width="2.5"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CTA BANNER ============ -->
+  <section class="cta-band">
+    <svg class="torn-divider torn-divider-top" preserveAspectRatio="none" viewBox="0 0 1200 50" xmlns="http://www.w3.org/2000/svg">
+      <path d="M0,50 L0,20 L45,40 L90,16 L136,38 L182,14 L228,36 L274,18 L320,40 L366,16 L412,38 L458,20 L504,40 L550,14 L596,38 L642,18 L688,40 L734,16 L780,38 L826,20 L872,40 L918,14 L964,38 L1010,18 L1056,40 L1102,20 L1150,38 L1200,20 L1200,50 Z" fill="#7f1d2b"/>
+    </svg>
+    <div class="wrap cta-inner">
+      <div>
+        <h2 class="display-sm on-maroon">Ready to get started?</h2>
+        <p class="on-maroon-soft">Tell us what you need — we'll help you build the right form for it.</p>
+      </div>
+      <a href="#contact" class="btn btn-paper">Create Your First Form <span aria-hidden="true">&rarr;</span></a>
+    </div>
+  </section>
+
+  <!-- ============ CONTACT ============ -->
+  <section id="contact" class="contact paper-bg">
+    <div class="wrap contact-inner">
+      <div class="contact-copy">
+        <p class="eyebrow">Get in touch</p>
+        <h2 class="display-sm">Tell us what you need <em>a form for.</em></h2>
+        <p class="lede">Every HubiForm right now is set up by hand, tailored to what you're actually trying to collect. Send a few details and we'll get back to you.</p>
+      </div>
+      <form class="contact-form" id="contactForm">
+        <div class="field">
+          <label for="name">Full Name</label>
+          <input type="text" id="name" name="name" required placeholder="Your name" />
+        </div>
+        <div class="field">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" name="email" required placeholder="you@example.com" />
+        </div>
+        <div class="field">
+          <label for="message">What do you need a form for?</label>
+          <textarea id="message" name="message" rows="4" required placeholder="Tell us a bit about it..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Send Request</button>
+        <p class="form-status" id="formStatus" role="status"></p>
+      </form>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <a class="brand" href="#top">
+      <img src="assets/hubiform-icon.png" alt="" class="brand-mark" width="32" height="32" />
+      <span class="brand-word small">
+        <span class="brand-hubi">Hubi</span><span class="brand-form">Form</span>
+      </span>
+    </a>
+    <a href="#contact">Contact</a>
+    <p class="copyright">&copy; 2026 HubiForm. All rights reserved.</p>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
