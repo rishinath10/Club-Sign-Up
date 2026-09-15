@@ -144,7 +144,7 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({ onLogout }) => {
       name: 'New Club',
       capacity: 25,
       schoolLevel: activeLevel,
-      description: 'Activity description...',
+      description: '',
       eligibleClasses: []
     };
     setEditedClubs([...editedClubs, newClub]);
@@ -585,6 +585,23 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({ onLogout }) => {
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-brand-emerald-500 uppercase mb-1">
+                      Description <span className="normal-case font-normal text-brand-emerald-400">(shown to students)</span>
+                    </label>
+                    <textarea
+                      value={club.description ?? ''}
+                      onChange={e => {
+                        const next = [...editedClubs];
+                        next[idx] = { ...next[idx], description: e.target.value };
+                        setEditedClubs(next);
+                      }}
+                      placeholder="What does this club do? e.g. Learn to build simple games and websites."
+                      rows={2}
+                      className="w-full px-3 py-1.5 text-sm rounded-lg border border-stone-300 bg-white text-brand-emerald-900 resize-none"
+                    />
                   </div>
 
                   {/* Class eligibility - collapsed by default; most clubs stay open to everyone */}

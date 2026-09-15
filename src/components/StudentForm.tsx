@@ -497,6 +497,11 @@ export const StudentForm: React.FC<StudentFormProps> = ({ clubs, classrooms, sea
                         <span className="font-semibold text-brand-emerald-900 text-sm block leading-tight">
                           {club.name}
                         </span>
+                        {club.description && (
+                          <span className="text-[11px] text-brand-emerald-500 block mt-0.5 leading-snug line-clamp-2">
+                            {club.description}
+                          </span>
+                        )}
                         <span
                           className={`text-[11px] font-bold mt-0.5 block ${
                             isFull
