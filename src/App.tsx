@@ -130,23 +130,11 @@ export default function App() {
               aria-hidden="true"
               className="h-14 sm:h-20 w-auto shrink-0"
             />
-            <span className="flex items-center gap-2 shrink-0" role="img" aria-label="Stars International School">
-              <span
-                className="text-3xl sm:text-4xl font-black tracking-tight text-brand-turmeric-400"
-                style={{
-                  WebkitTextStroke: '1px #171717',
-                  textShadow:
-                    '-1.5px -1.5px 0 #171717, 1.5px -1.5px 0 #171717, -1.5px 1.5px 0 #171717, 1.5px 1.5px 0 #171717, 0 -1.5px 0 #171717, 0 1.5px 0 #171717, -1.5px 0 0 #171717, 1.5px 0 0 #171717'
-                }}
-              >
-                STARS
-              </span>
-              <span className="font-serif text-[11px] sm:text-sm font-medium tracking-[0.12em] text-stone-900 leading-[1.15]">
-                INTERNATIONAL
-                <br />
-                SCHOOL
-              </span>
-            </span>
+            <img
+              src="stars-wordmark.png"
+              alt="Stars International School"
+              className="h-9 sm:h-12 w-auto shrink-0"
+            />
           </div>
 
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
