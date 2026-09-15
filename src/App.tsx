@@ -127,7 +127,7 @@ export default function App() {
             <img
               src="stars-wordmark.png"
               alt="Stars International School"
-              className="h-12 sm:h-16 w-auto shrink-0"
+              className="h-20 sm:h-28 w-auto shrink-0"
             />
           </div>
 
