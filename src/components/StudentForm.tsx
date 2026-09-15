@@ -50,13 +50,16 @@ export const StudentForm: React.FC<StudentFormProps> = ({ clubs, classrooms, sea
 
   const getClubCount = (clubId: string) => seatCounts[clubId] ?? 0;
   const spotsLeft = (club: Club) => Math.max(0, club.capacity - getClubCount(club.id));
+  const isEligible = (club: Club) => club.eligibleClasses.length === 0 || club.eligibleClasses.includes(studentClass);
 
   // Available clubs first, then full ones - students shouldn't have to scroll
-  // past closed clubs to find one they can actually join.
+  // past closed clubs to find one they can actually join. Clubs restricted to
+  // other classes are left out entirely rather than shown disabled - a Year 2
+  // student doesn't need to see clubs they were never going to be able to pick.
   const visibleClubs = useMemo(() => {
     const query = search.trim().toLowerCase();
     return clubs
-      .filter(c => !query || c.name.toLowerCase().includes(query))
+      .filter(c => isEligible(c) && (!query || c.name.toLowerCase().includes(query)))
       .slice()
       .sort((a, b) => {
         const aFull = spotsLeft(a) === 0;
@@ -64,7 +67,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ clubs, classrooms, sea
         if (aFull !== bFull) return aFull ? 1 : -1;
         return 0;
       });
-  }, [clubs, search, seatCounts]);
+  }, [clubs, search, seatCounts, studentClass]);
 
   const selectedClub = clubs.find(c => c.id === selectedClubId) ?? null;
 
@@ -114,7 +117,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ clubs, classrooms, sea
 
       if (result.ok === false) {
         setErrorMessage(result.message);
-        if (result.reason === 'full') setSelectedClubId(null);
+        if (result.reason === 'full' || result.reason === 'ineligible') setSelectedClubId(null);
         setIsSubmitting(false);
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;

@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx';
 export async function loadClubsConfig(level: SchoolLevel): Promise<Club[]> {
   const { data, error } = await supabase
     .from('clubs')
-    .select('id, name, capacity, description, school_level')
+    .select('id, name, capacity, description, school_level, eligible_classes')
     .eq('school_level', level)
     .order('created_at', { ascending: true });
 
@@ -20,7 +20,8 @@ export async function loadClubsConfig(level: SchoolLevel): Promise<Club[]> {
     name: row.name,
     capacity: row.capacity,
     description: row.description ?? undefined,
-    schoolLevel: row.school_level
+    schoolLevel: row.school_level,
+    eligibleClasses: row.eligible_classes ?? []
   }));
 }
 
@@ -48,7 +49,8 @@ export async function saveClubsConfig(level: SchoolLevel, clubs: Club[]): Promis
         name: c.name,
         capacity: c.capacity,
         description: c.description ?? null,
-        school_level: level
+        school_level: level,
+        eligible_classes: c.eligibleClasses ?? []
       }))
     );
     if (upsertErr) throw upsertErr;
@@ -156,7 +158,7 @@ export async function loadClubSeatCounts(): Promise<Record<string, number>> {
 
 export type SignupResult =
   | { ok: true; submission: Submission }
-  | { ok: false; reason: 'duplicate' | 'full' | 'error'; message: string };
+  | { ok: false; reason: 'duplicate' | 'full' | 'ineligible' | 'error'; message: string };
 
 const levelLabel = (level: SchoolLevel) => (level === 'primary' ? 'Primary School' : 'Secondary School');
 
@@ -192,6 +194,9 @@ export async function submitSignup(input: {
   if (error) {
     if (error.message.includes('CLUB_FULL')) {
       return { ok: false, reason: 'full', message: `"${input.clubName}" just reached maximum capacity. Please choose another club.` };
+    }
+    if (error.message.includes('CLASS_NOT_ELIGIBLE')) {
+      return { ok: false, reason: 'ineligible', message: `"${input.clubName}" isn't available for your class. Please choose another club.` };
     }
     if (error.code === '23505') {
       return { ok: false, reason: 'duplicate', message: duplicateMessage };

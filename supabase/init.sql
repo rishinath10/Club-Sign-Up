@@ -20,9 +20,16 @@ create table if not exists public.clubs (
   capacity integer not null default 25,
   school_level text not null,
   description text,
+  -- Empty means open to every class in the section; a populated list
+  -- restricts sign-ups to exactly those class names (matched against
+  -- submissions.class, which is free text chosen from the classrooms list).
+  eligible_classes text[] not null default '{}',
   created_at timestamptz not null default now(),
   constraint clubs_school_level_check check (school_level in ('primary', 'secondary'))
 );
+
+-- Existing installs won't have this column from the create table above.
+alter table public.clubs add column if not exists eligible_classes text[] not null default '{}';
 
 create table if not exists public.submissions (
   id uuid primary key default gen_random_uuid(),
@@ -201,8 +208,9 @@ $$;
 grant execute on function public.check_name_taken(text, text) to anon, authenticated;
 
 -- ---------------------------------------------------------------------------
--- Capacity enforcement (atomic - locks the club row so concurrent sign-ups
--- for the same club can never overbook it)
+-- Capacity + class-eligibility enforcement (atomic - locks the club row so
+-- concurrent sign-ups for the same club can never overbook it, and so a
+-- club's eligible_classes can't change mid-insert)
 -- ---------------------------------------------------------------------------
 
 create or replace function public.enforce_club_capacity()
@@ -211,12 +219,21 @@ language plpgsql
 as $$
 declare
   v_capacity integer;
+  v_eligible_classes text[];
   v_taken integer;
 begin
-  select capacity into v_capacity from public.clubs where id = new.club_id for update;
+  select capacity, eligible_classes into v_capacity, v_eligible_classes
+  from public.clubs where id = new.club_id for update;
 
   if v_capacity is null then
     raise exception 'CLUB_NOT_FOUND';
+  end if;
+
+  -- Empty eligible_classes means open to every class; a populated list
+  -- restricts sign-ups to exactly those class names.
+  if v_eligible_classes is not null and array_length(v_eligible_classes, 1) > 0
+     and not (new.class = any(v_eligible_classes)) then
+    raise exception 'CLASS_NOT_ELIGIBLE';
   end if;
 
   select count(*) into v_taken from public.submissions where club_id = new.club_id;

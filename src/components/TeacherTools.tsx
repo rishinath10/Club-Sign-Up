@@ -32,7 +32,9 @@ import {
   RefreshCw,
   Backpack,
   School,
-  DoorOpen
+  DoorOpen,
+  Lock,
+  ChevronDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -63,6 +65,9 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({ onLogout }) => {
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClubFilter, setSelectedClubFilter] = useState('ALL');
+
+  // Which club's "restrict to classes" panel is open - only one at a time
+  const [expandedEligibilityId, setExpandedEligibilityId] = useState<string | null>(null);
 
   // Confirmation Modals
   const [showResetModalStep1, setShowResetModalStep1] = useState(false);
@@ -139,7 +144,8 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({ onLogout }) => {
       name: 'New Club',
       capacity: 25,
       schoolLevel: activeLevel,
-      description: 'Activity description...'
+      description: 'Activity description...',
+      eligibleClasses: []
     };
     setEditedClubs([...editedClubs, newClub]);
   };
@@ -153,6 +159,21 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({ onLogout }) => {
       }
     }
     setEditedClubs(editedClubs.filter(c => c.id !== clubId));
+  };
+
+  // Toggle one class in/out of a club's eligible-classes list. An empty list
+  // means the club is open to everyone - this is how a teacher clears a
+  // restriction, by unchecking every class.
+  const toggleEligibleClass = (clubIdx: number, className: string) => {
+    const next = [...editedClubs];
+    const current = next[clubIdx].eligibleClasses;
+    next[clubIdx] = {
+      ...next[clubIdx],
+      eligibleClasses: current.includes(className)
+        ? current.filter(c => c !== className)
+        : [...current, className]
+    };
+    setEditedClubs(next);
   };
 
   // Handle saving classroom changes
@@ -474,7 +495,7 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({ onLogout }) => {
                 Club Names & Capacity Limits
               </h3>
               <p className="text-brand-emerald-500 text-xs mt-0.5">
-                Adjust maximum student capacity or edit club titles without touching code.
+                Adjust capacity, edit titles, or restrict a club to specific classes - all without touching code.
               </p>
             </div>
 
@@ -502,64 +523,129 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({ onLogout }) => {
               const currentSignedUp = allSubmissions.filter(s => s.clubId === club.id).length;
               const isAtCap = currentSignedUp >= club.capacity;
 
+              const isExpanded = expandedEligibilityId === club.id;
+              const isRestricted = club.eligibleClasses.length > 0;
+
               return (
                 <div
                   key={club.id}
-                  className="p-4 rounded-xl border border-stone-200 bg-stone-50/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                  className="p-4 rounded-xl border border-stone-200 bg-stone-50/50 flex flex-col gap-3"
                 >
-                  <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                    <div className="md:col-span-6">
-                      <label className="block text-[11px] font-semibold text-brand-emerald-500 uppercase mb-1">
-                        Club Name
-                      </label>
-                      <input
-                        type="text"
-                        value={club.name}
-                        onChange={e => {
-                          const next = [...editedClubs];
-                          next[idx].name = e.target.value;
-                          setEditedClubs(next);
-                        }}
-                        className="w-full px-3 py-1.5 text-sm rounded-lg border border-stone-300 bg-white font-medium text-brand-emerald-900"
-                      />
+                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                      <div className="md:col-span-6">
+                        <label className="block text-[11px] font-semibold text-brand-emerald-500 uppercase mb-1">
+                          Club Name
+                        </label>
+                        <input
+                          type="text"
+                          value={club.name}
+                          onChange={e => {
+                            const next = [...editedClubs];
+                            next[idx].name = e.target.value;
+                            setEditedClubs(next);
+                          }}
+                          className="w-full px-3 py-1.5 text-sm rounded-lg border border-stone-300 bg-white font-medium text-brand-emerald-900"
+                        />
+                      </div>
+
+                      <div className="md:col-span-3">
+                        <label className="block text-[11px] font-semibold text-brand-emerald-500 uppercase mb-1">
+                          Capacity Limit
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={club.capacity}
+                          onChange={e => {
+                            const next = [...editedClubs];
+                            next[idx].capacity = parseInt(e.target.value, 10) || 1;
+                            setEditedClubs(next);
+                          }}
+                          className="w-full px-3 py-1.5 text-sm rounded-lg border border-stone-300 bg-white font-medium text-brand-emerald-900"
+                        />
+                      </div>
+
+                      <div className="md:col-span-3 text-xs text-brand-emerald-500 pt-2 md:pt-4">
+                        <span className="font-semibold text-brand-emerald-700">{currentSignedUp}</span> of{' '}
+                        <span className="font-semibold text-brand-emerald-700">{club.capacity}</span> taken
+                        {isAtCap && (
+                          <span className="ml-2 text-rose-600 font-bold bg-rose-50 px-1.5 py-0.5 rounded">
+                            Full
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="md:col-span-3">
-                      <label className="block text-[11px] font-semibold text-brand-emerald-500 uppercase mb-1">
-                        Capacity Limit
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={club.capacity}
-                        onChange={e => {
-                          const next = [...editedClubs];
-                          next[idx].capacity = parseInt(e.target.value, 10) || 1;
-                          setEditedClubs(next);
-                        }}
-                        className="w-full px-3 py-1.5 text-sm rounded-lg border border-stone-300 bg-white font-medium text-brand-emerald-900"
-                      />
-                    </div>
-
-                    <div className="md:col-span-3 text-xs text-brand-emerald-500 pt-2 md:pt-4">
-                      <span className="font-semibold text-brand-emerald-700">{currentSignedUp}</span> of{' '}
-                      <span className="font-semibold text-brand-emerald-700">{club.capacity}</span> taken
-                      {isAtCap && (
-                        <span className="ml-2 text-rose-600 font-bold bg-rose-50 px-1.5 py-0.5 rounded">
-                          Full
-                        </span>
-                      )}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteClub(club.id)}
+                      title="Remove Club"
+                      className="p-2 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors shrink-0"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteClub(club.id)}
-                    title="Remove Club"
-                    className="p-2 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors shrink-0"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {/* Class eligibility - collapsed by default; most clubs stay open to everyone */}
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedEligibilityId(isExpanded ? null : club.id)}
+                      className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
+                        isRestricted
+                          ? 'text-brand-turmeric-700 bg-brand-turmeric-50 hover:bg-brand-turmeric-100'
+                          : 'text-brand-emerald-500 hover:text-brand-emerald-900 hover:bg-stone-100'
+                      }`}
+                    >
+                      <Lock className="w-3 h-3" />
+                      {isRestricted
+                        ? `Restricted to ${club.eligibleClasses.length} class${club.eligibleClasses.length === 1 ? '' : 'es'}`
+                        : 'Open to all classes'}
+                      <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {isExpanded && (
+                      <div className="mt-2 p-3 rounded-xl border border-stone-200 bg-white">
+                        {classrooms.length === 0 ? (
+                          <p className="text-xs text-brand-emerald-400">
+                            No classrooms set up yet - add some in the Classroom List above first.
+                          </p>
+                        ) : (
+                          <>
+                            <p className="text-[11px] text-brand-emerald-500 mb-2">
+                              Leave all unchecked to keep this club open to every class. Check specific classes to
+                              restrict sign-ups to only those.
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {classrooms.map(classroom => {
+                                const checked = club.eligibleClasses.includes(classroom.name);
+                                return (
+                                  <label
+                                    key={classroom.id}
+                                    className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border cursor-pointer transition-colors ${
+                                      checked
+                                        ? 'border-brand-emerald-900 bg-brand-emerald-50 text-brand-emerald-900 font-semibold'
+                                        : 'border-stone-200 bg-white text-brand-emerald-600 hover:border-stone-300'
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={() => toggleEligibleClass(idx, classroom.name)}
+                                      className="sr-only"
+                                    />
+                                    {checked && <Check className="w-3 h-3" />}
+                                    {classroom.name}
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -586,7 +672,7 @@ export const TeacherTools: React.FC<TeacherToolsProps> = ({ onLogout }) => {
               disabled={isSavingClubs}
               className="px-5 py-2.5 rounded-xl bg-brand-emerald-900 hover:bg-brand-emerald-800 text-white text-sm font-bold transition-all cursor-pointer shadow-xs"
             >
-              {isSavingClubs ? 'Saving...' : 'Save Capacities'}
+              {isSavingClubs ? 'Saving...' : 'Save Club Settings'}
             </button>
           </div>
         </div>

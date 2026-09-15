@@ -6,6 +6,9 @@ export interface Club {
   capacity: number;
   schoolLevel: SchoolLevel;
   description?: string;
+  // Empty = open to every class in the section. Populated = only students in
+  // one of these classes (matched against the class they picked) can join.
+  eligibleClasses: string[];
 }
 
 export interface Submission {
@@ -65,38 +68,38 @@ export const CLUB_ICONS: Record<string, string> = {
 export const DEFAULT_CLUB_ICON = '⭐';
 
 export const DEFAULT_CLUBS_PRIMARY: Club[] = [
-  { id: 'arts-craft-club', name: 'Arts & Craft Club', capacity: 30, schoolLevel: 'primary' },
-  { id: 'chess-club', name: 'Chess Club', capacity: 30, schoolLevel: 'primary' },
-  { id: 'coding-club', name: 'Coding Club', capacity: 30, schoolLevel: 'primary' },
-  { id: 'culinary-club', name: 'Culinary Club', capacity: 25, schoolLevel: 'primary' },
-  { id: 'dance-club', name: 'Dance Club', capacity: 30, schoolLevel: 'primary' },
-  { id: 'entrepreneurship-club', name: 'Entrepreneurship Club', capacity: 30, schoolLevel: 'primary' },
-  { id: 'futsal-club', name: 'Futsal Club', capacity: 35, schoolLevel: 'primary' },
-  { id: 'literary-society', name: 'Literary Society', capacity: 30, schoolLevel: 'primary' },
-  { id: 'music-club', name: 'Music Club', capacity: 30, schoolLevel: 'primary' },
-  { id: 'public-speaking-club', name: 'Public Speaking Club', capacity: 30, schoolLevel: 'primary' },
-  { id: 'science-innovation-club', name: 'Science & Innovation Club', capacity: 30, schoolLevel: 'primary' },
-  { id: 'scrabble-club', name: 'Scrabble Club', capacity: 30, schoolLevel: 'primary' },
-  { id: 'table-tennis-club', name: 'Table Tennis Club', capacity: 30, schoolLevel: 'primary' },
-  { id: 'taekwondo', name: 'Taekwondo', capacity: 30, schoolLevel: 'primary' },
-  { id: 'theatre-performing-arts', name: 'Theatre & Performing Arts', capacity: 30, schoolLevel: 'primary' }
+  { id: 'arts-craft-club', name: 'Arts & Craft Club', capacity: 30, schoolLevel: 'primary', eligibleClasses: [] },
+  { id: 'chess-club', name: 'Chess Club', capacity: 30, schoolLevel: 'primary', eligibleClasses: [] },
+  { id: 'coding-club', name: 'Coding Club', capacity: 30, schoolLevel: 'primary', eligibleClasses: [] },
+  { id: 'culinary-club', name: 'Culinary Club', capacity: 25, schoolLevel: 'primary', eligibleClasses: [] },
+  { id: 'dance-club', name: 'Dance Club', capacity: 30, schoolLevel: 'primary', eligibleClasses: [] },
+  { id: 'entrepreneurship-club', name: 'Entrepreneurship Club', capacity: 30, schoolLevel: 'primary', eligibleClasses: [] },
+  { id: 'futsal-club', name: 'Futsal Club', capacity: 35, schoolLevel: 'primary', eligibleClasses: [] },
+  { id: 'literary-society', name: 'Literary Society', capacity: 30, schoolLevel: 'primary', eligibleClasses: [] },
+  { id: 'music-club', name: 'Music Club', capacity: 30, schoolLevel: 'primary', eligibleClasses: [] },
+  { id: 'public-speaking-club', name: 'Public Speaking Club', capacity: 30, schoolLevel: 'primary', eligibleClasses: [] },
+  { id: 'science-innovation-club', name: 'Science & Innovation Club', capacity: 30, schoolLevel: 'primary', eligibleClasses: [] },
+  { id: 'scrabble-club', name: 'Scrabble Club', capacity: 30, schoolLevel: 'primary', eligibleClasses: [] },
+  { id: 'table-tennis-club', name: 'Table Tennis Club', capacity: 30, schoolLevel: 'primary', eligibleClasses: [] },
+  { id: 'taekwondo', name: 'Taekwondo', capacity: 30, schoolLevel: 'primary', eligibleClasses: [] },
+  { id: 'theatre-performing-arts', name: 'Theatre & Performing Arts', capacity: 30, schoolLevel: 'primary', eligibleClasses: [] }
 ];
 
 export const DEFAULT_CLUBS_SECONDARY: Club[] = [
-  { id: 'secondary-chess-club', name: 'Chess Club', capacity: 35, schoolLevel: 'secondary' },
-  { id: 'secondary-coding-club', name: 'Coding Club', capacity: 25, schoolLevel: 'secondary' },
-  { id: 'secondary-culinary-club', name: 'Culinary Club', capacity: 30, schoolLevel: 'secondary' },
-  { id: 'secondary-entrepreneurship-club', name: 'Entrepreneurship Club', capacity: 30, schoolLevel: 'secondary' },
-  { id: 'secondary-futsal-club', name: 'Futsal Club', capacity: 35, schoolLevel: 'secondary' },
-  { id: 'secondary-interact-club', name: 'Interact Club', capacity: 30, schoolLevel: 'secondary' },
-  { id: 'secondary-media-visual-arts-club', name: 'Media & Visual Arts Club', capacity: 30, schoolLevel: 'secondary' },
-  { id: 'secondary-model-united-nations', name: 'Model United Nations', capacity: 30, schoolLevel: 'secondary' },
-  { id: 'secondary-music-band', name: 'Music Band', capacity: 30, schoolLevel: 'secondary' },
-  { id: 'secondary-photography-production', name: 'Photography & Production', capacity: 25, schoolLevel: 'secondary' },
-  { id: 'secondary-ping-pong-club', name: 'Ping Pong Club', capacity: 25, schoolLevel: 'secondary' },
-  { id: 'secondary-science-innovation-club', name: 'Science & Innovation Club', capacity: 25, schoolLevel: 'secondary' },
-  { id: 'secondary-taekwondo-club', name: 'Taekwondo Club', capacity: 25, schoolLevel: 'secondary' },
-  { id: 'secondary-youth-volunteer-club', name: 'Youth Volunteer & Community Service Club', capacity: 25, schoolLevel: 'secondary' }
+  { id: 'secondary-chess-club', name: 'Chess Club', capacity: 35, schoolLevel: 'secondary', eligibleClasses: [] },
+  { id: 'secondary-coding-club', name: 'Coding Club', capacity: 25, schoolLevel: 'secondary', eligibleClasses: [] },
+  { id: 'secondary-culinary-club', name: 'Culinary Club', capacity: 30, schoolLevel: 'secondary', eligibleClasses: [] },
+  { id: 'secondary-entrepreneurship-club', name: 'Entrepreneurship Club', capacity: 30, schoolLevel: 'secondary', eligibleClasses: [] },
+  { id: 'secondary-futsal-club', name: 'Futsal Club', capacity: 35, schoolLevel: 'secondary', eligibleClasses: [] },
+  { id: 'secondary-interact-club', name: 'Interact Club', capacity: 30, schoolLevel: 'secondary', eligibleClasses: [] },
+  { id: 'secondary-media-visual-arts-club', name: 'Media & Visual Arts Club', capacity: 30, schoolLevel: 'secondary', eligibleClasses: [] },
+  { id: 'secondary-model-united-nations', name: 'Model United Nations', capacity: 30, schoolLevel: 'secondary', eligibleClasses: [] },
+  { id: 'secondary-music-band', name: 'Music Band', capacity: 30, schoolLevel: 'secondary', eligibleClasses: [] },
+  { id: 'secondary-photography-production', name: 'Photography & Production', capacity: 25, schoolLevel: 'secondary', eligibleClasses: [] },
+  { id: 'secondary-ping-pong-club', name: 'Ping Pong Club', capacity: 25, schoolLevel: 'secondary', eligibleClasses: [] },
+  { id: 'secondary-science-innovation-club', name: 'Science & Innovation Club', capacity: 25, schoolLevel: 'secondary', eligibleClasses: [] },
+  { id: 'secondary-taekwondo-club', name: 'Taekwondo Club', capacity: 25, schoolLevel: 'secondary', eligibleClasses: [] },
+  { id: 'secondary-youth-volunteer-club', name: 'Youth Volunteer & Community Service Club', capacity: 25, schoolLevel: 'secondary', eligibleClasses: [] }
 ];
 
 export function defaultClubsFor(level: SchoolLevel): Club[] {
