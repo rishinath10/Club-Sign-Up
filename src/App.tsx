@@ -123,17 +123,11 @@ export default function App() {
         {/* Header */}
         <header className="border-b-2 border-stone-200 pb-6 mb-8">
           {/* School identity */}
-          <div className="flex items-center justify-center gap-3 sm:gap-4 mb-6">
-            <img
-              src="stars-crest.png"
-              alt=""
-              aria-hidden="true"
-              className="h-14 sm:h-20 w-auto shrink-0"
-            />
+          <div className="flex items-center justify-center mb-6">
             <img
               src="stars-wordmark.png"
               alt="Stars International School"
-              className="h-9 sm:h-12 w-auto shrink-0"
+              className="h-12 sm:h-16 w-auto shrink-0"
             />
           </div>
 
